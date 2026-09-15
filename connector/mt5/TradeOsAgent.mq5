@@ -32,9 +32,9 @@
 #include <TradeOS/JsonLite.mqh>
 
 //--- input parameters -------------------------------------------------------
-input string   ApiUrl        = "http://localhost:4000"; // TradeOS API URL
+input string   ApiUrl        = "https://tradeos-one-bice.vercel.app/api"; // TradeOS API URL
 input string   PairingCode   = "";                      // Pairing code (first run only)
-input int      PollSeconds   = 1;                       // Seconds between syncs
+input int      PollSeconds   = 3;                       // Seconds between syncs
 input int      SlippagePoints= 20;                      // Max slippage (points)
 input bool     VerboseLog    = false;                   // Log every sync
 
