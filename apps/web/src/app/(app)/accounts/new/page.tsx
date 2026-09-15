@@ -7,7 +7,7 @@ import type { AccountRole, PairingDto, Platform } from '@tradeos/shared';
 import { Alert, Button, Card, Field, PageHeader, Spinner, inputClass } from '@/components/ui';
 import { ApiError, post } from '@/lib/api';
 import { useLiveData } from '@/lib/live-data';
-import { PairingInstructions } from '@/components/pairing-instructions';
+import { ConnectWizard } from '@/components/connect-wizard';
 
 function NewAccountForm() {
   const params = useSearchParams();
@@ -74,15 +74,15 @@ function NewAccountForm() {
           title="Connect your terminal"
           description="One more step: link the MetaTrader terminal to this account."
         />
-        <PairingInstructions pairing={pairing} platform={form.platform} />
-        <div className="mt-6 flex gap-3">
-          <Button onClick={() => router.push(`/accounts/${pairing.accountId}`)}>
-            Done — view account
-          </Button>
-          <Link href="/accounts/new">
-            <Button variant="secondary">Add another account</Button>
-          </Link>
-        </div>
+        <ConnectWizard
+          pairing={pairing}
+          platform={form.platform}
+          accountName={form.name}
+          onDone={() => {
+            setPairing(null);
+            setForm((f) => ({ ...f, name: '', accountNumber: '' }));
+          }}
+        />
       </>
     );
   }

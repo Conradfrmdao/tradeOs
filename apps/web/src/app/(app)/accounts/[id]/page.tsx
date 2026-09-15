@@ -21,7 +21,7 @@ import {
   thClass,
 } from '@/components/ui';
 import { EquityChart } from '@/components/equity-chart';
-import { PairingInstructions } from '@/components/pairing-instructions';
+import { ConnectWizard } from '@/components/connect-wizard';
 import { DirectionTag } from '@/components/trade-bits';
 
 interface AccountDetail {
@@ -109,7 +109,7 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
 
       {pairing ? (
         <div className="mb-6">
-          <PairingInstructions pairing={pairing} platform={account.platform} />
+          <ConnectWizard pairing={pairing} platform={account.platform} accountName={account.name} />
         </div>
       ) : null}
 
