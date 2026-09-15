@@ -104,7 +104,7 @@ function Hero() {
             <span className="text-slate-400">The rest follow.</span>
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
+          <p className="mt-6 max-w-lg text-lg leading-relaxed text-slate-600 xl:max-w-xl">
             Connect a master MetaTrader account and up to ten followers. Every trade you take is
             mirrored to each one at the size you choose, and the whole portfolio sits on a single
             screen.

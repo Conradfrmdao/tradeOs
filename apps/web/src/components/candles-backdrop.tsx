@@ -55,23 +55,26 @@ function buildSeries(count: number, seed: number, amplitude: number) {
 
   const candles: Candle[] = [];
   const closes: number[] = [];
-  let price = 0.52;
+  let price = 0.3;
   let drift = 0;
 
   for (let i = 0; i < count; i++) {
     const phase = i / count;
 
-    // A slow shape underneath the noise: down, base, up, stall.
+    // A slow shape underneath the noise: a dip, a base, a strong recovery,
+    // then a consolidation. Wide enough to use most of the canvas height —
+    // a series confined to a thin band reads as a flat line, which is the one
+    // thing this artwork must not look like.
     const shape =
-      Math.sin(phase * Math.PI * 1.65 - 0.9) * 0.16 * amplitude +
-      Math.sin(phase * Math.PI * 3.1) * 0.05 * amplitude;
+      Math.sin(phase * Math.PI * 1.45 - 1.05) * 0.34 * amplitude +
+      Math.sin(phase * Math.PI * 2.7 + 0.4) * 0.09 * amplitude;
 
-    drift = drift * 0.6 + (rand() - 0.5) * 0.06 * amplitude;
+    drift = drift * 0.58 + (rand() - 0.5) * 0.11 * amplitude;
 
     const open = price;
     const target = 0.5 + shape;
-    const close = Math.min(0.94, Math.max(0.06, open + drift + (target - open) * 0.28));
-    const wick = (0.02 + rand() * 0.05) * amplitude;
+    const close = Math.min(0.94, Math.max(0.06, open + drift + (target - open) * 0.34));
+    const wick = (0.035 + rand() * 0.075) * amplitude;
 
     candles.push({
       x: i * slot + slot / 2,
@@ -156,21 +159,22 @@ export function CandlesBackdrop() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-y-0 right-0 hidden w-[78%] select-none md:block"
+      className="pointer-events-none absolute inset-y-0 right-0 hidden w-[64%] select-none lg:block"
       style={{
-        // Fades out over the headline on the left, and softens at the top and
-        // bottom so it never meets an edge.
+        // Held well clear of the copy: the artwork occupies the right of the
+        // hero and does not begin until after the paragraph ends, so no line
+        // of text ever crosses a candle.
         maskImage:
-          'linear-gradient(to right, transparent 4%, rgba(0,0,0,0.28) 28%, rgba(0,0,0,0.78) 58%, black 84%), linear-gradient(to bottom, transparent 0%, black 16%, black 80%, transparent 100%)',
+          'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.45) 18%, black 46%), linear-gradient(to bottom, transparent 0%, black 14%, black 82%, transparent 100%)',
         WebkitMaskImage:
-          'linear-gradient(to right, transparent 4%, rgba(0,0,0,0.28) 28%, rgba(0,0,0,0.78) 58%, black 84%), linear-gradient(to bottom, transparent 0%, black 16%, black 80%, transparent 100%)',
+          'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.45) 18%, black 46%), linear-gradient(to bottom, transparent 0%, black 14%, black 82%, transparent 100%)',
         maskComposite: 'intersect',
         WebkitMaskComposite: 'source-in',
       }}
     >
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio="xMaxYMid slice"
         className="h-full w-full"
         role="presentation"
       >
@@ -195,7 +199,7 @@ export function CandlesBackdrop() {
         ))}
 
         {/* Far plane — big, soft, out of focus. */}
-        <g filter="url(#tos-depth)" opacity="0.2">
+        <g filter="url(#tos-depth)" opacity="0.24">
           <Candles
             data={far}
             bodyRatio={0.5}
@@ -208,7 +212,7 @@ export function CandlesBackdrop() {
 
         {/* Near plane — in focus, carrying the contrast. */}
         <path d={near.average} fill="none" stroke="#0b1220" strokeWidth="2" opacity="0.16" />
-        <g opacity="0.62">
+        <g opacity="0.7">
           <Candles
             data={near}
             bodyRatio={0.56}
@@ -219,6 +223,17 @@ export function CandlesBackdrop() {
           />
         </g>
       </svg>
+
+      {/* Painted over the artwork rather than under it: the mask alone is a
+          percentage of this box, so at narrower widths a long line of text can
+          still reach the first candle. This guarantees the separation. */}
+      <div
+        className="absolute inset-y-0 left-0 right-0"
+        style={{
+          background:
+            'linear-gradient(to right, #ffffff 0%, #ffffff 26%, rgba(255,255,255,0.72) 38%, rgba(255,255,255,0) 56%)',
+        }}
+      />
     </div>
   );
 }
