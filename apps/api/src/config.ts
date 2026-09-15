@@ -64,8 +64,32 @@ if (!parsed.success) {
     .join('\n');
   // Printed rather than thrown so the operator sees every problem at once,
   // not just the first one.
-  console.error(`\nInvalid environment configuration:\n${issues}\n`);
-  console.error('Copy .env.example to .env and fill in the missing values.\n');
+  console.error(`\nTradeOS API cannot start — invalid environment configuration:\n${issues}\n`);
+
+  // The remedy differs by where this is running, and telling a Railway or
+  // Render operator to "copy .env.example to .env" sends them looking for a
+  // file that does not exist on the platform.
+  const hosted =
+    process.env.RAILWAY_ENVIRONMENT ??
+    process.env.RENDER ??
+    process.env.FLY_APP_NAME ??
+    process.env.VERCEL ??
+    process.env.KUBERNETES_SERVICE_HOST;
+
+  if (hosted) {
+    console.error(
+      'Set these in your hosting platform\'s environment variables, then redeploy.\n' +
+        'On Railway: the service\'s Variables tab (the Raw Editor accepts KEY=VALUE lines).\n' +
+        'On Render: the service\'s Environment tab.\n' +
+        'Generate the secrets with:\n' +
+        "  SESSION_SECRET  node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"\n" +
+        "  ENCRYPTION_KEY  node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"\n" +
+        'Full list: docs/DEPLOYMENT.md\n',
+    );
+  } else {
+    console.error('Copy .env.example to .env and fill in the missing values.\n');
+  }
+
   process.exit(1);
 }
 
