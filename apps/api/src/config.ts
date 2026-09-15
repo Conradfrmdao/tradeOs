@@ -93,6 +93,26 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+/** True when a well-known hosting platform's marker variable is present. */
+export const isHostedPlatform = Boolean(
+  process.env.RAILWAY_ENVIRONMENT ??
+    process.env.RENDER ??
+    process.env.FLY_APP_NAME ??
+    process.env.KUBERNETES_SERVICE_HOST,
+);
+
+// Running a deployed service in development mode is almost always an unset
+// variable rather than a decision: it leaves cookies without the Secure flag
+// and turns on verbose per-request logging. Say so loudly rather than letting
+// it pass silently.
+if (isHostedPlatform && parsed.data.NODE_ENV !== 'production') {
+  console.warn(
+    `\n[warning] NODE_ENV is "${parsed.data.NODE_ENV}" on a hosted platform.\n` +
+      '          Session cookies will not be marked Secure and request logging\n' +
+      '          will be verbose. Set NODE_ENV=production and redeploy.\n',
+  );
+}
+
 export const config = {
   ...parsed.data,
   isProduction: parsed.data.NODE_ENV === 'production',
