@@ -72,6 +72,13 @@ COPY --from=builder /app/packages/db/migrations packages/db/migrations
 COPY --from=builder /app/packages/db/index.js /app/packages/db/index.d.ts packages/db/
 COPY --from=builder /app/apps/api/dist apps/api/dist
 
+# The Prisma CLI writes its engine files under node_modules on first run, which
+# is how migrations are applied at startup. npm installed those as root, so the
+# unprivileged user below cannot write there and `prisma migrate deploy` fails
+# with a permissions error. Hand it the directories it needs rather than
+# running the whole service as root.
+RUN chown -R node:node /app/node_modules/@prisma /app/node_modules/.prisma 2>/dev/null || true
+
 # Run unprivileged. The node image already provides this user.
 USER node
 
