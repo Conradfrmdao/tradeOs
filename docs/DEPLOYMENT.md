@@ -182,14 +182,52 @@ URL — `https://your-api.onrender.com`, not the Vercel URL.
 
 ---
 
+## Authentication (Clerk)
+
+Clerk owns sign-in, sign-up, email verification and password reset. That is why
+the API no longer needs SMTP for anyone to create an account.
+
+Set on the Vercel project:
+
+```
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...
+```
+
+**Development vs production instance.** A `pk_test_` / `sk_test_` pair is
+Clerk's *development* instance: it works, but it shows a "Development mode"
+badge, caps user numbers, and runs on `clerk.accounts.dev`. Before real users,
+create a production instance in the Clerk dashboard against your own domain and
+swap in the `pk_live_` / `sk_live_` keys.
+
+### What Clerk does not touch
+
+The MetaTrader agents authenticate with bearer tokens issued at pairing, not a
+browser session. The Clerk middleware matcher in `apps/web/src/middleware.ts`
+explicitly skips `/api/agent`, because those routes are called every few seconds
+by every connected terminal and sending them through a session layer would add
+a round trip to the copy path.
+
+Changing auth provider therefore cannot disturb a connected terminal. That is a
+property of the agent protocol, not a coincidence.
+
+### Local user rows
+
+TradeOS keeps its own `users` row alongside Clerk. Every trading account, trade,
+copy event and audit entry hangs off it, and a trader's history has to outlive
+whichever auth provider sits in front of it. Rows link by `clerkUserId`, falling
+back to email so an account that existed before Clerk keeps its data when its
+owner first signs in through Clerk.
+
 ## Email
 
-Verification and alert emails need real SMTP in production. Anything works:
-Resend, Postmark, SES, Mailgun, a Gmail app password for low volume.
+Clerk sends verification and password-reset email, so **signup no longer needs
+SMTP at all**.
 
-Without SMTP configured, send failures are logged and everything else keeps
-working — but users cannot verify their email, and connecting a trading account
-requires a verified address. In-dashboard notifications still appear.
+SMTP is still used for TradeOS's own operational alerts — an account
+disconnecting, a copy failing. Without it those failures are logged and
+everything else keeps working; the in-dashboard notifications still appear.
+Resend, Postmark, SES and Mailgun all work.
 
 ## Before real money
 

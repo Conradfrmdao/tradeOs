@@ -150,7 +150,8 @@ per run and deletes it afterwards.
 
 ## What is in V1
 
-Authentication with email verification and password reset · one master and up
+Authentication via Clerk (sign-in, sign-up, email verification, password
+reset) · one master and up
 to ten followers · live balance, equity, margin and open positions · the trade
 copier with same-lot, multiplier and fixed-lot sizing · stop-loss and
 take-profit copying · reverse copying · symbol mapping · per-follower and
