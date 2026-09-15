@@ -7,23 +7,32 @@ import { cx } from './ui';
 /**
  * Floating bottom navigation for phones.
  *
- * The five destinations a trader actually moves between while watching
- * positions, kept within thumb reach instead of behind a menu button at the
- * top of the screen. Anything else lives under "More".
+ * Carries the four screens a trader moves between while watching positions,
+ * within thumb reach rather than behind a menu button in the top corner.
  *
- * It floats above a safe-area inset so it clears the home indicator on
- * gesture-driven phones, and the page reserves matching space so the last row
- * of a table is never trapped underneath it.
+ * "More" opens only what is *not* already here — repeating the four would make
+ * the sheet mostly redundant and hide the two screens it exists to reach.
+ * Settings and the account menu live in the header instead, where destructive
+ * and account-level actions are out of the way of one-handed navigation.
  */
 
-const ITEMS = [
+export const PILL_ITEMS = [
   { href: '/dashboard', label: 'Home', icon: HomeIcon },
   { href: '/accounts', label: 'Accounts', icon: AccountsIcon },
   { href: '/copier', label: 'Copier', icon: CopierIcon },
   { href: '/trades', label: 'Trades', icon: TradesIcon },
 ] as const;
 
-export function MobileNav({ onMore }: { onMore: () => void }) {
+/** Paths the pill already covers, so the sheet can exclude them. */
+export const PILL_HREFS: readonly string[] = PILL_ITEMS.map((i) => i.href);
+
+export function MobileNav({
+  onMore,
+  moreOpen,
+}: {
+  onMore: () => void;
+  moreOpen: boolean;
+}) {
   const pathname = usePathname() ?? '';
 
   return (
@@ -33,8 +42,9 @@ export function MobileNav({ onMore }: { onMore: () => void }) {
       style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="flex w-full max-w-md items-stretch gap-0.5 rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-lg shadow-slate-900/10 backdrop-blur">
-        {ITEMS.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        {PILL_ITEMS.map((item) => {
+          const active =
+            !moreOpen && (pathname === item.href || pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;
           return (
             <Link
@@ -55,7 +65,11 @@ export function MobileNav({ onMore }: { onMore: () => void }) {
         <button
           type="button"
           onClick={onMore}
-          className="flex flex-1 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium text-slate-600 transition-colors active:bg-slate-100"
+          aria-expanded={moreOpen}
+          className={cx(
+            'flex flex-1 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors',
+            moreOpen ? 'bg-slate-900 text-white' : 'text-slate-600 active:bg-slate-100',
+          )}
         >
           <MoreIcon />
           More
@@ -65,7 +79,7 @@ export function MobileNav({ onMore }: { onMore: () => void }) {
   );
 }
 
-/** Space so a floating bar never covers the end of the page. */
+/** Space so the floating bar never covers the end of the page. */
 export function MobileNavSpacer() {
   return (
     <div
@@ -77,7 +91,7 @@ export function MobileNavSpacer() {
 }
 
 // ---------------------------------------------------------------------------
-// Icons — inline so the bundle carries no icon library for five glyphs.
+// Icons — inline, so the bundle carries no icon library for a handful of glyphs.
 // ---------------------------------------------------------------------------
 
 const svg = {
@@ -134,6 +148,15 @@ function MoreIcon() {
       <circle cx="5" cy="12" r="1.4" />
       <circle cx="12" cy="12" r="1.4" />
       <circle cx="19" cy="12" r="1.4" />
+    </svg>
+  );
+}
+
+export function SettingsIcon() {
+  return (
+    <svg {...svg} width={22} height={22}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   );
 }

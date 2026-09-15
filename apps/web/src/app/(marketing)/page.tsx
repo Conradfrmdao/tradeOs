@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import type { Metadata } from 'next';
+import { CandlesBackdrop } from '@/components/candles-backdrop';
 
 export const metadata: Metadata = {
   title: 'TradeOS — Copy trades between your MT4 and MT5 accounts',
@@ -82,7 +83,7 @@ function Hero() {
           pretending to be data. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        className="pointer-events-none absolute inset-0 opacity-[0.3]"
         style={{
           backgroundImage:
             'linear-gradient(to right, #eef2f7 1px, transparent 1px), linear-gradient(to bottom, #eef2f7 1px, transparent 1px)',
@@ -93,8 +94,10 @@ function Hero() {
         }}
       />
 
+      <CandlesBackdrop />
+
       <div className="relative mx-auto max-w-6xl px-6 py-20 sm:py-28">
-        <div className="max-w-3xl">
+        <div className="max-w-2xl">
           <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-6xl">
             One account trades.
             <br />

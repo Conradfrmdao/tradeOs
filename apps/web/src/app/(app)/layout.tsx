@@ -9,7 +9,12 @@ import { LiveDataProvider, useLiveData } from '@/lib/live-data';
 import { Alert, Button, Skeleton, SkeletonScreen, cx } from '@/components/ui';
 import { post } from '@/lib/api';
 import { UserButton } from '@clerk/nextjs';
-import { MobileNav, MobileNavSpacer } from '@/components/mobile-nav';
+import {
+  MobileNav,
+  MobileNavSpacer,
+  PILL_HREFS,
+  SettingsIcon,
+} from '@/components/mobile-nav';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -76,15 +81,32 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen lg:flex">
       {/* Mobile title bar. Navigation itself lives in the bottom pill, within
           thumb reach, so this only identifies the app and closes the sheet. */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2.5 lg:hidden">
         <Link href="/dashboard" className="font-bold" onClick={() => setNavOpen(false)}>
           TradeOS
         </Link>
-        {navOpen ? (
-          <Button variant="secondary" onClick={() => setNavOpen(false)}>
-            Close
-          </Button>
-        ) : null}
+
+        {/* Account-level controls sit here rather than in the thumb-reach bar:
+            they are occasional, and one of them signs you out. */}
+        <div className="flex items-center gap-1">
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            aria-current={pathname === '/settings' ? 'page' : undefined}
+            onClick={() => setNavOpen(false)}
+            className={cx(
+              'rounded-lg p-2 transition-colors',
+              pathname === '/settings'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 active:bg-slate-100',
+            )}
+          >
+            <SettingsIcon />
+          </Link>
+          <UserButton
+            appearance={{ elements: { avatarBox: 'h-8 w-8', userButtonBox: 'gap-0' } }}
+          />
+        </div>
       </header>
 
       <nav
@@ -102,9 +124,20 @@ function Shell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <div className="min-h-0 flex-1 lg:overflow-y-auto">
+        {/* Phones already have these four in the bottom pill, so the sheet
+            shows only what is left; desktop still gets the full list. */}
+        <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 lg:hidden">
+          More
+        </p>
         <ul className="space-y-1">
           {NAV.map((item) => (
-            <NavLink key={item.href} {...item} pathname={pathname} onNavigate={() => setNavOpen(false)} />
+            <NavLink
+              key={item.href}
+              {...item}
+              pathname={pathname}
+              onNavigate={() => setNavOpen(false)}
+              hideOnMobile={PILL_HREFS.includes(item.href) || item.href === '/settings'}
+            />
           ))}
         </ul>
 
@@ -125,7 +158,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         {/* Pinned to the bottom of the sidebar. `showName` puts the name and
             email inside Clerk's own trigger, so the whole row opens the menu
             rather than only the avatar. */}
-        <div className="mt-6 border-t border-slate-200 pt-3 lg:mt-0">
+        <div className="mt-6 hidden border-t border-slate-200 pt-3 lg:mt-0 lg:block">
           <UserButton
             showName
             appearance={{
@@ -153,7 +186,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      <MobileNav onMore={() => setNavOpen((v) => !v)} />
+      <MobileNav onMore={() => setNavOpen((v) => !v)} moreOpen={navOpen} />
     </div>
   );
 }
@@ -193,17 +226,20 @@ function NavLink({
   pathname,
   onNavigate,
   exact,
+  hideOnMobile,
 }: {
   href: string;
   label: string;
   pathname: string;
   onNavigate: () => void;
   exact?: boolean;
+  /** Reachable from the bottom pill or the header, so the sheet omits it. */
+  hideOnMobile?: boolean;
 }) {
   const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <li>
+    <li className={hideOnMobile ? 'hidden lg:block' : undefined}>
       <Link
         href={href}
         onClick={onNavigate}
