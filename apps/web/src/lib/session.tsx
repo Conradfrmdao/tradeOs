@@ -95,7 +95,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await post('/auth/logout');
     } finally {
       setUser(null);
-      router.push('/sign-in');
+      // The landing page, not sign-in: someone who just signed out is more
+      // likely to be leaving than to be signing straight back in.
+      router.push('/');
     }
   }, [router]);
 

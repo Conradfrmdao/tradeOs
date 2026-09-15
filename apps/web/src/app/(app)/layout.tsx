@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { formatAge } from '@tradeos/shared';
 import { useRequireAuth } from '@/lib/session';
 import { LiveDataProvider, useLiveData } from '@/lib/live-data';
@@ -73,7 +73,21 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { user } = useRequireAuth();
   // usePathname() is typed as possibly null alongside a pages/ directory.
   const pathname = usePathname() ?? '';
+  const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+
+  // Where the settings gear returns to, so it toggles rather than being a
+  // one-way trip like an ordinary link.
+  const lastNonSettings = useRef('/dashboard');
+  useEffect(() => {
+    if (pathname !== '/settings') lastNonSettings.current = pathname || '/dashboard';
+  }, [pathname]);
+
+  const settingsOpen = pathname === '/settings';
+  const toggleSettings = () => {
+    setNavOpen(false);
+    router.push(settingsOpen ? lastNonSettings.current : '/settings');
+  };
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -89,20 +103,18 @@ function Shell({ children }: { children: React.ReactNode }) {
         {/* Account-level controls sit here rather than in the thumb-reach bar:
             they are occasional, and one of them signs you out. */}
         <div className="flex items-center gap-1">
-          <Link
-            href="/settings"
-            aria-label="Settings"
-            aria-current={pathname === '/settings' ? 'page' : undefined}
-            onClick={() => setNavOpen(false)}
+          <button
+            type="button"
+            aria-label={settingsOpen ? 'Close settings' : 'Settings'}
+            aria-expanded={settingsOpen}
+            onClick={toggleSettings}
             className={cx(
               'rounded-lg p-2 transition-colors',
-              pathname === '/settings'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-600 active:bg-slate-100',
+              settingsOpen ? 'bg-slate-900 text-white' : 'text-slate-600 active:bg-slate-100',
             )}
           >
             <SettingsIcon />
-          </Link>
+          </button>
           <UserButton
             appearance={{ elements: { avatarBox: 'h-8 w-8', userButtonBox: 'gap-0' } }}
           />
