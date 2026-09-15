@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+
+  /* Financial figures line up column-to-column only with tabular numerals. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}

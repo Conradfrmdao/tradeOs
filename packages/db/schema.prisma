@@ -1,0 +1,567 @@
+// ---------------------------------------------------------------------------
+// TradeOS data model
+//
+// Money/price columns are Decimal, never Float — floating point drift is not
+// acceptable in a financial ledger.
+// Trading accounts are soft-deleted (deletedAt) so that closed-trade history
+// and audit trails survive the user removing an account.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================================================
+// Identity
+// ===========================================================================
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String
+  email         String     @unique
+  passwordHash  String
+  emailVerified Boolean    @default(false)
+  role          UserRole   @default(USER)
+  status        UserStatus @default(ACTIVE)
+
+  // Brute-force protection on the login endpoint.
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  settings      UserSettings?
+  sessions      Session[]
+  tokens        VerificationToken[]
+  accounts      TradingAccount[]
+  copiers       CopierSettings[]
+  copyEvents    CopyEvent[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@index([status])
+  @@map("users")
+}
+
+model UserSettings {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // PRD 25 / 27 — the global kill switch. When false, no copy task is ever
+  // created, regardless of per-follower settings.
+  copyingEnabled  Boolean   @default(true)
+  emergencyStopAt DateTime?
+
+  notifyEmail        Boolean @default(true)
+  notifyOnCopyOk     Boolean @default(false) // noisy by nature — off by default
+  notifyOnCopyFail   Boolean @default(true)
+  notifyOnConnect    Boolean @default(true)
+  notifyOnDisconnect Boolean @default(true)
+
+  timezone String @default("UTC")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+model Session {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Only a SHA-256 of the session token is stored; the raw value lives solely
+  // in the user's httpOnly cookie.
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+enum VerificationTokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+model VerificationToken {
+  id        String                @id @default(uuid()) @db.Uuid
+  userId    String                @db.Uuid
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      VerificationTokenType
+  tokenHash String                @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime              @default(now())
+
+  @@index([userId, type])
+  @@map("verification_tokens")
+}
+
+// ===========================================================================
+// Trading accounts
+// ===========================================================================
+
+enum Platform {
+  MT4
+  MT5
+}
+
+enum AccountRole {
+  MASTER
+  FOLLOWER
+}
+
+enum AccountStatus {
+  PENDING // created, agent has never checked in
+  CONNECTING // agent paired, first sync not yet complete
+  CONNECTED
+  DISCONNECTED // heartbeat expired
+  ERROR
+  DISABLED // switched off by the user or an admin
+}
+
+enum ConnectorType {
+  AGENT_EA // Expert Advisor running in the user's own terminal (V1)
+  BROKER_API // reserved: credential-based cloud provider
+}
+
+model TradingAccount {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name          String
+  platform      Platform
+  broker        String?
+  accountNumber String
+  server        String?
+  currency      String        @default("USD")
+  leverage      Int?
+  role          AccountRole
+  connectorType ConnectorType @default(AGENT_EA)
+
+  status  AccountStatus @default(PENDING)
+  enabled Boolean       @default(true)
+
+  // Live snapshot, refreshed on every agent sync.
+  balance     Decimal? @db.Decimal(20, 8)
+  equity      Decimal? @db.Decimal(20, 8)
+  margin      Decimal? @db.Decimal(20, 8)
+  freeMargin  Decimal? @db.Decimal(20, 8)
+  marginLevel Decimal? @db.Decimal(20, 8)
+  credit      Decimal? @db.Decimal(20, 8)
+  floatingPl  Decimal? @db.Decimal(20, 8)
+
+  lastHeartbeatAt DateTime?
+  lastSyncAt      DateTime?
+  lastError       String?
+  agentVersion    String?
+  terminalBuild   String?
+
+  // Reserved for ConnectorType.BROKER_API. AES-256-GCM envelope, never a
+  // plaintext password, never returned by any API response. Null under
+  // AGENT_EA — which is exactly why AGENT_EA is the V1 default.
+  encryptedCredentials Json?
+
+  // Cursor for incremental closed-deal history pulls from the terminal.
+  historyCursor DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  agentToken      AgentToken?
+  positions       Position[]
+  equitySnapshots EquitySnapshot[]
+
+  copierAsMaster   CopierSettings[] @relation("MasterCopier")
+  copierAsFollower CopierSettings?  @relation("FollowerCopier")
+
+  tasksAsMaster   CopyTask[] @relation("MasterTasks")
+  tasksAsFollower CopyTask[] @relation("FollowerTasks")
+
+  eventsAsMaster   CopyEvent[] @relation("MasterEvents")
+  eventsAsFollower CopyEvent[] @relation("FollowerEvents")
+
+  // Uniqueness is enforced by a PARTIAL unique index created in the migration
+  // (`WHERE "deletedAt" IS NULL`), which Prisma cannot express here.
+  //
+  // A plain @@unique would count soft-deleted rows, so a user who removed an
+  // account could never reconnect it — the slot stayed occupied forever by a
+  // row they can no longer see.
+  @@index([userId, platform, accountNumber])
+  @@index([userId, role])
+  @@index([status])
+  @@map("trading_accounts")
+}
+
+// One agent (EA) per trading account. Pairing is a short code the user types
+// into the EA; it is exchanged once for a long-lived bearer token.
+model AgentToken {
+  id        String         @id @default(uuid()) @db.Uuid
+  accountId String         @unique @db.Uuid
+  account   TradingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  pairingCodeHash  String?   @unique
+  pairingExpiresAt DateTime?
+  pairedAt         DateTime?
+
+  tokenHash  String?   @unique
+  lastSeenAt DateTime?
+  lastIp     String?
+  revokedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("agent_tokens")
+}
+
+// ===========================================================================
+// Copier configuration
+// ===========================================================================
+
+enum RiskMode {
+  SAME_LOT
+  LOT_MULTIPLIER
+  FIXED_LOT
+}
+
+model CopierSettings {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  masterAccountId String         @db.Uuid
+  masterAccount   TradingAccount @relation("MasterCopier", fields: [masterAccountId], references: [id], onDelete: Cascade)
+
+  // V1: a follower follows exactly one master, hence @unique.
+  followerAccountId String         @unique @db.Uuid
+  followerAccount   TradingAccount @relation("FollowerCopier", fields: [followerAccountId], references: [id], onDelete: Cascade)
+
+  enabled Boolean @default(true)
+
+  riskMode      RiskMode @default(SAME_LOT)
+  lotMultiplier Decimal  @default(1.0) @db.Decimal(10, 4)
+  fixedLot      Decimal  @default(0.10) @db.Decimal(12, 4)
+
+  // Hard guards applied after sizing, before dispatch.
+  minLot Decimal? @db.Decimal(12, 4)
+  maxLot Decimal? @db.Decimal(12, 4)
+
+  copyStopLoss      Boolean @default(true)
+  copyTakeProfit    Boolean @default(true)
+  copyPendingOrders Boolean @default(false)
+  reverseTrades     Boolean @default(false)
+
+  maxSlippagePoints Int @default(20)
+
+  symbolMappings SymbolMapping[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([masterAccountId])
+  @@map("copier_settings")
+}
+
+model SymbolMapping {
+  id               String         @id @default(uuid()) @db.Uuid
+  copierSettingsId String         @db.Uuid
+  copierSettings   CopierSettings @relation(fields: [copierSettingsId], references: [id], onDelete: Cascade)
+
+  masterSymbol   String
+  followerSymbol String
+
+  createdAt DateTime @default(now())
+
+  @@unique([copierSettingsId, masterSymbol])
+  @@map("symbol_mappings")
+}
+
+// ===========================================================================
+// Trades
+// ===========================================================================
+
+enum TradeDirection {
+  BUY
+  SELL
+}
+
+enum PositionStatus {
+  OPEN
+  CLOSED
+}
+
+model Position {
+  id        String         @id @default(uuid()) @db.Uuid
+  accountId String         @db.Uuid
+  account   TradingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  // Broker identifiers as reported by the terminal.
+  ticket     String
+  positionId String?
+  magic      String?
+
+  symbol    String
+  direction TradeDirection
+  volume    Decimal        @db.Decimal(12, 4)
+
+  openPrice    Decimal  @db.Decimal(20, 8)
+  closePrice   Decimal? @db.Decimal(20, 8)
+  currentPrice Decimal? @db.Decimal(20, 8)
+  stopLoss     Decimal? @db.Decimal(20, 8)
+  takeProfit   Decimal? @db.Decimal(20, 8)
+
+  profit     Decimal @default(0) @db.Decimal(20, 8) // floating while OPEN, realised once CLOSED
+  swap       Decimal @default(0) @db.Decimal(20, 8)
+  commission Decimal @default(0) @db.Decimal(20, 8)
+  netProfit  Decimal @default(0) @db.Decimal(20, 8) // profit + swap + commission
+
+  openTime  DateTime
+  closeTime DateTime?
+  status    PositionStatus @default(OPEN)
+  comment   String?
+
+  // Set on a follower position: which master position it mirrors.
+  masterPositionId String?    @db.Uuid
+  masterPosition   Position?  @relation("CopyLineage", fields: [masterPositionId], references: [id], onDelete: SetNull)
+  copies           Position[] @relation("CopyLineage")
+
+  copyTasks CopyTask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([accountId, ticket])
+  @@index([accountId, status])
+  @@index([accountId, closeTime])
+  @@index([masterPositionId])
+  @@index([symbol])
+  @@map("positions")
+}
+
+// ===========================================================================
+// Copy engine
+// ===========================================================================
+
+enum CopyAction {
+  OPEN
+  CLOSE
+  MODIFY
+  PARTIAL_CLOSE
+}
+
+enum CopyTaskStatus {
+  PENDING
+  DISPATCHED
+  SUCCESS
+  FAILED
+  SKIPPED
+  EXPIRED
+}
+
+// The unit of idempotency (PRD 42).
+//
+// `dedupeKey` is derived deterministically from the master event, so the same
+// master event can be observed any number of times — by a reconnecting agent,
+// a restarted server, a retried request — and still produce exactly one task
+// per follower. Creation is an INSERT ... ON CONFLICT DO NOTHING.
+model CopyTask {
+  id String @id @default(uuid()) @db.Uuid
+
+  masterAccountId String         @db.Uuid
+  masterAccount   TradingAccount @relation("MasterTasks", fields: [masterAccountId], references: [id], onDelete: Cascade)
+
+  followerAccountId String         @db.Uuid
+  followerAccount   TradingAccount @relation("FollowerTasks", fields: [followerAccountId], references: [id], onDelete: Cascade)
+
+  masterPositionId String?   @db.Uuid
+  masterPosition   Position? @relation(fields: [masterPositionId], references: [id], onDelete: SetNull)
+
+  action CopyAction
+
+  // e.g. "open:<masterPositionId>" | "close:<masterPositionId>"
+  //      | "modify:<masterPositionId>:<sl>:<tp>"
+  dedupeKey String
+
+  status      CopyTaskStatus @default(PENDING)
+  attempts    Int            @default(0)
+  maxAttempts Int            @default(3)
+
+  // Fully resolved instruction for the agent: symbol, side, volume, sl, tp...
+  payload Json
+
+  followerTicket String?
+  errorCode      String?
+  errorMessage   String?
+
+  dispatchedAt DateTime?
+  completedAt  DateTime?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  events CopyEvent[]
+
+  @@unique([followerAccountId, dedupeKey])
+  @@index([followerAccountId, status])
+  @@index([masterPositionId])
+  @@index([status, expiresAt])
+  @@map("copy_tasks")
+}
+
+enum CopyEventType {
+  MASTER_OPEN
+  MASTER_CLOSE
+  MASTER_MODIFY
+  COPY_QUEUED
+  COPY_DISPATCHED
+  COPY_EXECUTED
+  COPY_FAILED
+  COPY_SKIPPED
+  COPY_EXPIRED
+  ACCOUNT_CONNECTED
+  ACCOUNT_DISCONNECTED
+  COPIER_TOGGLED
+  EMERGENCY_STOP
+}
+
+enum CopyEventStatus {
+  INFO
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+model CopyEvent {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  masterAccountId String?         @db.Uuid
+  masterAccount   TradingAccount? @relation("MasterEvents", fields: [masterAccountId], references: [id], onDelete: SetNull)
+
+  followerAccountId String?         @db.Uuid
+  followerAccount   TradingAccount? @relation("FollowerEvents", fields: [followerAccountId], references: [id], onDelete: SetNull)
+
+  copyTaskId String?   @db.Uuid
+  copyTask   CopyTask? @relation(fields: [copyTaskId], references: [id], onDelete: SetNull)
+
+  masterPositionId   String? @db.Uuid
+  followerPositionId String? @db.Uuid
+
+  eventType CopyEventType
+  status    CopyEventStatus @default(INFO)
+  message   String
+  errorCode String?
+  meta      Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([copyTaskId])
+  @@index([followerAccountId, createdAt])
+  @@map("copy_events")
+}
+
+// ===========================================================================
+// Observability
+// ===========================================================================
+
+model EquitySnapshot {
+  id        String         @id @default(uuid()) @db.Uuid
+  accountId String         @db.Uuid
+  account   TradingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  balance Decimal  @db.Decimal(20, 8)
+  equity  Decimal  @db.Decimal(20, 8)
+  at      DateTime
+
+  @@unique([accountId, at])
+  @@index([accountId, at])
+  @@map("equity_snapshots")
+}
+
+enum NotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+model Notification {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type     String
+  severity NotificationSeverity @default(INFO)
+  title    String
+  body     String?
+  meta     Json?
+
+  readAt    DateTime?
+  emailedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+enum ActorType {
+  USER
+  ADMIN
+  AGENT
+  SYSTEM
+}
+
+model AuditLog {
+  id     String  @id @default(uuid()) @db.Uuid
+  userId String? @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  actorType  ActorType
+  action     String
+  entityType String?
+  entityId   String?
+  ip         String?
+  userAgent  String?
+  meta       Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}

@@ -1,0 +1,13 @@
+# Normalise line endings so the repo is identical on Windows, macOS and the
+# Linux containers that build it.
+* text=auto eol=lf
+
+# MetaEditor is happier with CRLF in MQL sources.
+*.mq4 text eol=crlf
+*.mq5 text eol=crlf
+*.mqh text eol=crlf
+
+# Binary
+*.png binary
+*.jpg binary
+*.ico binary

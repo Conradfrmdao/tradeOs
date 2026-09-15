@@ -1,0 +1,16 @@
+{
+  "name": "@tradeos/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "generate": "prisma generate --schema ./schema.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.3.1"
+  }
+}
