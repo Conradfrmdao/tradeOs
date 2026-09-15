@@ -27,3 +27,6 @@ packages/db/generated/
 # Local scratch files
 .cookies.txt
 *.tmp.mjs
+
+# Deployment env dumps (contain live credentials)
+RAILWAY_ENV.local.txt
