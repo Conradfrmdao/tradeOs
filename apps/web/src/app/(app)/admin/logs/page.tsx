@@ -8,7 +8,7 @@ import {
   Card,
   EmptyState,
   PageHeader,
-  Spinner,
+  SkeletonTable,
   TableWrap,
   cx,
   inputClass,
@@ -113,7 +113,7 @@ export default function AdminLogsPage() {
           </Card>
 
           {loading ? (
-            <Spinner />
+            <SkeletonTable columns={5} rows={8} />
           ) : logs.length === 0 ? (
             <EmptyState title="No log entries match" />
           ) : (
@@ -179,7 +179,7 @@ export default function AdminLogsPage() {
           )}
         </>
       ) : loading ? (
-        <Spinner />
+        <SkeletonTable columns={6} rows={8} />
       ) : (
         <>
           {byCode.length > 0 ? (

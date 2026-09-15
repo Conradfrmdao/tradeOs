@@ -6,13 +6,35 @@ import { formatDateTime } from '@tradeos/shared';
 import { ApiError, patch, post } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { useLiveData } from '@/lib/live-data';
-import { Alert, Button, Card, Field, PageHeader, Spinner, inputClass } from '@/components/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  Field,
+  PageHeader,
+  SkeletonScreen,
+  SkeletonHeader,
+  SkeletonCard,
+  inputClass,
+} from '@/components/ui';
 
 export default function SettingsPage() {
   const { user, refresh } = useSession();
   const { notifications, unreadCount, markNotificationsRead } = useLiveData();
 
-  if (!user) return <Spinner />;
+  if (!user) {
+    return (
+      <SkeletonScreen label="Loading settings">
+        <SkeletonHeader />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <SkeletonCard rows={4} />
+          <SkeletonCard rows={4} />
+          <SkeletonCard rows={4} />
+          <SkeletonCard rows={4} />
+        </div>
+      </SkeletonScreen>
+    );
+  }
 
   return (
     <>

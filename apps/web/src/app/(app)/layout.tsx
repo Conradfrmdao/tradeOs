@@ -6,9 +6,10 @@ import { usePathname } from 'next/navigation';
 import { formatAge } from '@tradeos/shared';
 import { useRequireAuth } from '@/lib/session';
 import { LiveDataProvider, useLiveData } from '@/lib/live-data';
-import { Alert, Button, Spinner, cx } from '@/components/ui';
+import { Alert, Button, Skeleton, SkeletonScreen, cx } from '@/components/ui';
 import { post } from '@/lib/api';
 import { UserButton } from '@clerk/nextjs';
+import { MobileNav, MobileNavSpacer } from '@/components/mobile-nav';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -30,7 +31,9 @@ const ADMIN_NAV = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, mismatch, refresh } = useRequireAuth();
 
-  if (loading) return <Spinner label="Loading your dashboard" />;
+  // The shell is drawn immediately rather than blocking on the session, so
+  // navigation never shows a spinner before the page's own skeleton.
+  if (loading) return <AppShellSkeleton />;
 
   // Signed in with Clerk, but the API will not accept the session. Sending the
   // user back to sign-in here is what caused an infinite redirect loop, since
@@ -71,21 +74,27 @@ function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen lg:flex">
-      {/* Mobile header */}
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-        <Link href="/dashboard" className="font-bold">
+      {/* Mobile title bar. Navigation itself lives in the bottom pill, within
+          thumb reach, so this only identifies the app and closes the sheet. */}
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
+        <Link href="/dashboard" className="font-bold" onClick={() => setNavOpen(false)}>
           TradeOS
         </Link>
-        <Button variant="secondary" onClick={() => setNavOpen((v) => !v)} aria-expanded={navOpen}>
-          {navOpen ? 'Close' : 'Menu'}
-        </Button>
+        {navOpen ? (
+          <Button variant="secondary" onClick={() => setNavOpen(false)}>
+            Close
+          </Button>
+        ) : null}
       </header>
 
       <nav
         className={cx(
-          'border-b border-slate-200 bg-white px-3 py-4 lg:flex lg:h-screen lg:w-60 lg:shrink-0',
+          'bg-white px-3 py-4 lg:flex lg:h-screen lg:w-60 lg:shrink-0',
           'lg:sticky lg:top-0 lg:flex-col lg:border-b-0 lg:border-r',
-          navOpen ? 'block' : 'hidden lg:flex',
+          // On a phone the "More" sheet covers the screen above the pill.
+          navOpen
+            ? 'fixed inset-x-0 bottom-0 top-[57px] z-30 overflow-y-auto border-t border-slate-200 lg:static lg:inset-auto'
+            : 'hidden lg:flex',
         )}
       >
         <Link href="/dashboard" className="mb-6 hidden px-3 text-lg font-bold lg:block">
@@ -140,9 +149,41 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto max-w-7xl">
           <TopBanners />
           {children}
+          <MobileNavSpacer />
         </div>
       </main>
+
+      <MobileNav onMore={() => setNavOpen((v) => !v)} />
     </div>
+  );
+}
+
+/** The sidebar and a page-shaped body, held in place while the session loads. */
+function AppShellSkeleton() {
+  return (
+    <SkeletonScreen label="Loading TradeOS">
+      <div className="min-h-screen lg:flex">
+        <div className="hidden border-r border-slate-200 bg-white px-3 py-4 lg:block lg:w-60 lg:shrink-0">
+          <Skeleton className="mx-3 h-6 w-24" />
+          <div className="mt-6 space-y-2">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-full rounded-lg" />
+            ))}
+          </div>
+        </div>
+        <div className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="mt-2 h-4 w-72" />
+            <Skeleton className="mt-6 h-28 w-full rounded-xl" />
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <Skeleton className="h-48 w-full rounded-xl" />
+              <Skeleton className="h-48 w-full rounded-xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </SkeletonScreen>
   );
 }
 

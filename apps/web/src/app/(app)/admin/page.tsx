@@ -3,7 +3,15 @@
 import { useEffect, useState } from 'react';
 import type { CopyEventDto } from '@tradeos/shared';
 import { get } from '@/lib/api';
-import { Card, PageHeader, Spinner, Stat } from '@/components/ui';
+import {
+  Card,
+  PageHeader,
+  SkeletonScreen,
+  SkeletonHeader,
+  SkeletonCard,
+  SkeletonList,
+  Stat,
+} from '@/components/ui';
 import { CopyEventFeed } from '@/components/copy-event-feed';
 
 interface Overview {
@@ -32,7 +40,19 @@ export default function AdminDashboardPage() {
     })();
   }, []);
 
-  if (loading) return <Spinner label="Loading admin overview" />;
+  if (loading) {
+    return (
+      <SkeletonScreen label="Loading admin overview">
+        <SkeletonHeader />
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SkeletonCard rows={3} />
+          <SkeletonCard rows={3} />
+          <SkeletonCard rows={3} />
+        </div>
+        <SkeletonList rows={8} />
+      </SkeletonScreen>
+    );
+  }
   if (!overview) return null;
 
   return (

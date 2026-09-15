@@ -7,7 +7,7 @@ import {
   Button,
   Card,
   PageHeader,
-  Spinner,
+  SkeletonTable,
   TableWrap,
   cx,
   inputClass,
@@ -80,7 +80,7 @@ export default function AdminUsersPage() {
       </Card>
 
       {loading ? (
-        <Spinner />
+        <SkeletonTable columns={8} rows={8} />
       ) : (
         <TableWrap>
           <table className="w-full">

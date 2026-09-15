@@ -4,7 +4,17 @@ import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { AccountRole, PairingDto, Platform } from '@tradeos/shared';
-import { Alert, Button, Card, Field, PageHeader, Spinner, inputClass } from '@/components/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  Field,
+  PageHeader,
+  SkeletonScreen,
+  SkeletonHeader,
+  SkeletonCard,
+  inputClass,
+} from '@/components/ui';
 import { ApiError, post } from '@/lib/api';
 import { useLiveData } from '@/lib/live-data';
 import { ConnectWizard } from '@/components/connect-wizard';
@@ -187,7 +197,7 @@ function NewAccountForm() {
 
 export default function NewAccountPage() {
   return (
-    <Suspense fallback={<Spinner />}>
+    <Suspense fallback={<SkeletonScreen label="Loading"><SkeletonHeader /><SkeletonCard rows={4} /></SkeletonScreen>}>
       <NewAccountForm />
     </Suspense>
   );

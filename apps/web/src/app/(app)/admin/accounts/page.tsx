@@ -8,7 +8,7 @@ import {
   Button,
   Card,
   PageHeader,
-  Spinner,
+  SkeletonTable,
   StatusBadge,
   TableWrap,
   cx,
@@ -100,7 +100,7 @@ export default function AdminAccountsPage() {
       </Card>
 
       {loading ? (
-        <Spinner />
+        <SkeletonTable columns={9} rows={8} />
       ) : (
         <TableWrap>
           <table className="w-full">

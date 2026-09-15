@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import type { UserDto } from '@tradeos/shared';
@@ -9,7 +9,7 @@ import { ApiError, get, post } from './api';
 interface SessionValue {
   user: UserDto | null;
   loading: boolean;
-  /** Clerk says signed in, but the API will not accept us. */
+  /** Clerk says signed in, but the API will not accept us — after retries. */
   mismatch: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -18,43 +18,77 @@ interface SessionValue {
 
 const SessionContext = createContext<SessionValue | null>(null);
 
+/**
+ * How many times to re-ask the API before deciding a Clerk session is genuinely
+ * not accepted.
+ *
+ * Clerk's script can report `isSignedIn` a moment before the session token is
+ * retrievable, so the first call can legitimately come back 401. Treating that
+ * first answer as final is what made an alarming error flash on every load.
+ */
+const AUTH_RETRIES = 4;
+const RETRY_DELAY_MS = 350;
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [mismatch, setMismatch] = useState(false);
   const router = useRouter();
 
-  // Clerk's own view of whether anyone is signed in.
   const { isLoaded: clerkLoaded, isSignedIn } = useAuth();
 
+  // Read inside the retry loop without making it a dependency.
+  const signedInRef = useRef(isSignedIn);
+  signedInRef.current = isSignedIn;
+
   const refresh = useCallback(async () => {
-    try {
-      const data = await get<{ user: UserDto }>('/auth/me');
-      setUser(data.user);
-      setMismatch(false);
-    } catch (err) {
-      if (!(err instanceof ApiError) || err.status !== 401) {
-        console.error('Failed to load session', err);
+    setMismatch(false);
+
+    for (let attempt = 0; attempt <= AUTH_RETRIES; attempt++) {
+      try {
+        const data = await get<{ user: UserDto }>('/auth/me');
+        setUser(data.user);
+        setMismatch(false);
+        setLoading(false);
+        return;
+      } catch (err) {
+        const unauthorized = err instanceof ApiError && err.status === 401;
+
+        if (!unauthorized) {
+          console.error('Failed to load session', err);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        // Genuinely signed out — no point retrying.
+        if (!signedInRef.current) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        // Clerk claims a session; give the token a moment to become available
+        // before concluding anything is wrong.
+        if (attempt < AUTH_RETRIES) {
+          await wait(RETRY_DELAY_MS * (attempt + 1));
+          continue;
+        }
+
+        setUser(null);
+        setMismatch(true);
+        setLoading(false);
       }
-      setUser(null);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
-  // Wait for Clerk before asking the API, so the request carries a token.
+  // Wait for Clerk before asking, so the first request can carry a token.
   useEffect(() => {
     if (!clerkLoaded) return;
     void refresh();
   }, [clerkLoaded, isSignedIn, refresh]);
-
-  // Clerk is satisfied but the API is not. That combination is what used to
-  // bounce the user between /sign-in and /dashboard forever, so it is recorded
-  // as a state to show rather than a reason to navigate.
-  useEffect(() => {
-    if (!clerkLoaded || loading) return;
-    setMismatch(Boolean(isSignedIn) && user === null);
-  }, [clerkLoaded, loading, isSignedIn, user]);
 
   const signOut = useCallback(async () => {
     try {
@@ -82,10 +116,9 @@ export function useSession(): SessionValue {
 /**
  * Sends genuinely signed-out visitors to Clerk.
  *
- * Deliberately does **not** redirect when Clerk reports a session but the API
- * rejects it. Redirecting there produces an infinite loop, because Clerk's
- * sign-in page immediately sends an already-authenticated user back again. The
- * caller renders an explanation instead.
+ * Deliberately does **not** redirect when Clerk reports a session the API
+ * rejects: Clerk's sign-in page returns an authenticated user immediately, so
+ * that redirect can only loop. The caller renders an explanation instead.
  */
 export function useRequireAuth(): SessionValue {
   const session = useSession();
