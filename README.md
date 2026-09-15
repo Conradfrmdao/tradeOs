@@ -39,6 +39,31 @@ email from Mailpit at <http://localhost:8025>.
 
 ---
 
+## Deploying
+
+Two hosts, because the API needs a process that stays alive — it holds the
+dashboard's live connection open and notices within 30 seconds when a terminal
+goes quiet. Serverless cannot do either. Full detail in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+**1. API** — [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Conradfrmdao/tradeOs)
+
+Uses the committed `render.yaml`. Fill in `DATABASE_URL`, `DIRECT_DATABASE_URL`
+and `ENCRYPTION_KEY` when prompted. Note the URL it gives you.
+
+**2. Dashboard** — [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Conradfrmdao/tradeOs&env=NEXT_PUBLIC_API_URL&envDescription=URL%20of%20your%20deployed%20TradeOS%20API)
+
+Set `NEXT_PUBLIC_API_URL` to the API URL from step 1.
+
+**3. Connect them** — set `WEB_ORIGIN` on the API to your Vercel URL and
+redeploy the API. Skipping this is the usual cause of "everything fails in the
+browser but works in curl": it is what CORS is checked against.
+
+> On free tiers the API sleeps when idle, and a sleeping API copies no trades.
+> Use a paid instance before connecting a funded account.
+
+---
+
 ## How it connects to MetaTrader
 
 TradeOS does **not** ask for your trading password, and does not store one.
