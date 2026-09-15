@@ -41,9 +41,30 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * Clerk's session token for the current user, if signed in.
+ *
+ * Sent explicitly as a bearer token rather than relying on Clerk's cookie
+ * surviving the hop through the API. Cookie-only auth is what caused a
+ * redirect loop: the browser believed it was signed in, the API disagreed, and
+ * the two bounced the user between pages.
+ */
+async function clerkToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const clerk = (window as unknown as { Clerk?: { session?: { getToken(): Promise<string | null> } } }).Clerk;
+    return (await clerk?.session?.getToken()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? 'GET';
   const headers: Record<string, string> = {};
+
+  const token = await clerkToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   // Content-Type is set only when there is a body: sending it on a body-less
   // POST makes Fastify reject the request as an empty JSON payload.

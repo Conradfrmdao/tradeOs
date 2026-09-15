@@ -95,11 +95,6 @@ function Hero() {
 
       <div className="relative mx-auto max-w-6xl px-6 py-20 sm:py-28">
         <div className="max-w-3xl">
-          <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            MetaTrader 4 and MetaTrader 5
-          </p>
-
           <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-6xl">
             One account trades.
             <br />

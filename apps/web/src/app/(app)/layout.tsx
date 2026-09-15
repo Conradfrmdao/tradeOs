@@ -28,10 +28,31 @@ const ADMIN_NAV = [
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useRequireAuth();
+  const { user, loading, mismatch, refresh } = useRequireAuth();
 
   if (loading) return <Spinner label="Loading your dashboard" />;
-  if (!user) return null; // useRequireAuth is redirecting
+
+  // Signed in with Clerk, but the API will not accept the session. Sending the
+  // user back to sign-in here is what caused an infinite redirect loop, since
+  // Clerk immediately returns an already-authenticated user to the dashboard.
+  if (!user && mismatch) {
+    return (
+      <main className="mx-auto max-w-lg px-6 py-20">
+        <Alert tone="error" title="Signed in, but we could not load your account">
+          Your sign-in worked, but the TradeOS API did not accept the session. This is a problem on
+          our side, not something you did wrong.
+        </Alert>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button onClick={() => void refresh()}>Try again</Button>
+          <Link href="/sign-in">
+            <Button variant="secondary">Back to sign in</Button>
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (!user) return null; // genuinely signed out — useRequireAuth is redirecting
 
   return (
     <LiveDataProvider>
