@@ -44,7 +44,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await post('/auth/logout');
     } finally {
       setUser(null);
-      router.push('/login');
+      router.push('/sign-in');
     }
   }, [router]);
 
@@ -68,7 +68,7 @@ export function useRequireAuth(): SessionValue {
   const router = useRouter();
 
   useEffect(() => {
-    if (!session.loading && !session.user) router.replace('/login');
+    if (!session.loading && !session.user) router.replace('/sign-in');
   }, [session.loading, session.user, router]);
 
   return session;

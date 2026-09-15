@@ -12,6 +12,7 @@ import { config } from '../config';
 import { generateToken, hashToken, safeEqual } from '../lib/crypto';
 import { forbidden, unauthorized } from '../lib/errors';
 import { clientIp } from '../lib/audit';
+import { clerkEnabled, resolveClerkUser } from '../lib/clerk';
 
 export type SessionUser = User & { settings: UserSettings | null };
 
@@ -100,6 +101,18 @@ export async function revokeAllSessions(userId: string, exceptSessionId?: string
 }
 
 async function resolveSession(request: FastifyRequest): Promise<void> {
+  // Clerk first when it is configured: it owns identity, and its cookie
+  // reaches us because the dashboard and API share an origin.
+  if (clerkEnabled()) {
+    const clerkUser = await resolveClerkUser(request);
+    if (clerkUser) {
+      request.user = clerkUser;
+      return;
+    }
+  }
+
+  // Falls through to the built-in session for pre-Clerk accounts and for
+  // deployments running without Clerk configured at all.
   const token = request.cookies[SESSION_COOKIE_NAME];
   if (!token) return;
 
@@ -135,6 +148,11 @@ function verifyCsrf(request: FastifyRequest): void {
 
   const cookie = request.cookies[CSRF_COOKIE_NAME];
   const header = request.headers[CSRF_HEADER_NAME];
+
+  // A Clerk-authenticated request has no tos_csrf cookie because it never went
+  // through our login. Clerk issues its own SameSite cookie and verifies the
+  // token's origin, so the double-submit check here guards only our sessions.
+  if (!cookie && !request.cookies[SESSION_COOKIE_NAME]) return;
 
   if (!cookie || typeof header !== 'string' || !safeEqual(cookie, header)) {
     throw forbidden('Invalid or missing CSRF token — refresh the page and try again');

@@ -47,11 +47,19 @@ enum UserStatus {
 }
 
 model User {
-  id            String     @id @default(uuid()) @db.Uuid
-  name          String
-  email         String     @unique
-  passwordHash  String
-  emailVerified Boolean    @default(false)
+  id    String @id @default(uuid()) @db.Uuid
+  name  String
+  email String @unique
+
+  // Identity is owned by Clerk. The local row still exists because every
+  // trading account, trade and audit entry hangs off it, and because a
+  // trader's data must outlive any auth provider we happen to use.
+  clerkUserId String? @unique
+
+  // Null for Clerk-managed users. Kept nullable rather than dropped so the
+  // password routes still compile and any pre-Clerk account keeps its history.
+  passwordHash  String?
+  emailVerified Boolean @default(false)
   role          UserRole   @default(USER)
   status        UserStatus @default(ACTIVE)
 

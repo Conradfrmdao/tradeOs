@@ -1,3 +1,4 @@
+import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata, Viewport } from 'next';
 import { SessionProvider } from '@/lib/session';
 import './globals.css';
@@ -17,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <SessionProvider>{children}</SessionProvider>
+        <ClerkProvider afterSignOutUrl="/sign-in">
+          <SessionProvider>{children}</SessionProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

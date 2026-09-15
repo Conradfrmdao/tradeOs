@@ -33,3 +33,7 @@ VERCEL_ENV.local.txt
 
 .vercel
 .env*
+
+# Clerk local development keys — never committed.
+apps/web/.env.local
+.clerk/

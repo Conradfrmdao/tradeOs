@@ -12,7 +12,7 @@ export default function Home() {
 
   useEffect(() => {
     if (loading) return;
-    router.replace(user ? '/dashboard' : '/login');
+    router.replace(user ? '/dashboard' : '/sign-in');
   }, [user, loading, router]);
 
   return <Spinner label="Starting TradeOS" />;

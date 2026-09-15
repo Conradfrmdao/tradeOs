@@ -8,6 +8,7 @@ import { useRequireAuth } from '@/lib/session';
 import { LiveDataProvider, useLiveData } from '@/lib/live-data';
 import { Alert, Button, Spinner, cx } from '@/components/ui';
 import { post } from '@/lib/api';
+import { UserButton } from '@clerk/nextjs';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -40,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  const { user, signOut } = useRequireAuth();
+  const { user } = useRequireAuth();
   // usePathname() is typed as possibly null alongside a pages/ directory.
   const pathname = usePathname() ?? '';
   const [navOpen, setNavOpen] = useState(false);
@@ -88,15 +89,13 @@ function Shell({ children }: { children: React.ReactNode }) {
           </>
         ) : null}
 
-        <div className="mt-8 border-t border-slate-200 px-3 pt-4">
-          <p className="truncate text-sm font-medium text-slate-900">{user?.name}</p>
-          <p className="truncate text-xs text-slate-500">{user?.email}</p>
-          <button
-            onClick={() => void signOut()}
-            className="mt-3 text-sm text-slate-600 underline hover:text-slate-900"
-          >
-            Sign out
-          </button>
+        <div className="mt-8 flex items-center gap-3 border-t border-slate-200 px-3 pt-4">
+          {/* Clerk owns the profile and sign-out menu. */}
+          <UserButton />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-slate-900">{user?.name}</p>
+            <p className="truncate text-xs text-slate-500">{user?.email}</p>
+          </div>
         </div>
       </nav>
 

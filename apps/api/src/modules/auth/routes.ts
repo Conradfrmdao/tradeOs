@@ -118,6 +118,12 @@ export async function authRoutes(app: FastifyInstance) {
         throw unauthorized('This account has been disabled. Contact support.');
       }
 
+      // A Clerk-managed account has no password here at all; it must sign in
+      // through Clerk rather than being told its password is wrong.
+      if (!user.passwordHash) {
+        throw unauthorized('This account signs in with Clerk — use the sign-in page.');
+      }
+
       const valid = await verifyPassword(body.password, user.passwordHash);
 
       if (!valid) {
@@ -381,6 +387,10 @@ export async function authRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const user = requireUser(request);
       const body = changePasswordSchema.parse(request.body);
+
+      if (!user.passwordHash) {
+        throw badRequest('Your password is managed by Clerk — change it from your account settings.');
+      }
 
       if (!(await verifyPassword(body.currentPassword, user.passwordHash))) {
         throw badRequest('Your current password is incorrect', {
