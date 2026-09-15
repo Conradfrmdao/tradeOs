@@ -56,8 +56,14 @@ function buildSeries(): { candles: Candle[]; average: string } {
     // Momentum that decays, so runs form and break like a real series rather
     // than looking like uniform noise.
     drift = drift * 0.72 + (rand() - 0.5) * 0.055;
+
+    // Pulled gently back toward the middle. Without this the series can wander
+    // into a strong rise, which on a trading page reads as a performance claim
+    // — the one thing this artwork must not imply. Mean reversion makes a
+    // flattering shape impossible rather than merely unlikely.
     const open = price;
-    const close = Math.min(0.92, Math.max(0.08, open + drift));
+    const reversion = (0.5 - open) * 0.08;
+    const close = Math.min(0.9, Math.max(0.1, open + drift + reversion));
     const wick = 0.012 + rand() * 0.045;
 
     candles.push({
