@@ -31,3 +31,6 @@ packages/db/generated/
 # Deployment env dumps (contain live credentials)
 RAILWAY_ENV.local.txt
 VERCEL_ENV.local.txt
+
+.vercel
+.env*

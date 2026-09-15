@@ -10,6 +10,11 @@
 generator client {
   provider = "prisma-client-js"
   output   = "./generated/client"
+
+  // "native" covers whatever machine runs `prisma generate`; the explicit
+  // target is the runtime Vercel's functions use. Without it, a build on any
+  // non-Linux machine ships a client with no engine the deployment can load.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
