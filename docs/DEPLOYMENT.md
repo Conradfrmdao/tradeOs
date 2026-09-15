@@ -2,7 +2,41 @@
 
 Written for: whoever puts this on the internet.
 
-## Why it takes two hosts
+## Two ways to deploy
+
+**A. Everything on Vercel** (simplest, one platform, free tier)
+The API runs as a Vercel function alongside the dashboard, served from `/api`
+on the same domain. Same origin means no CORS and first-party cookies.
+
+**B. Dashboard on Vercel, API on a Docker host** (Railway, Render, Fly)
+Keeps live WebSocket updates and fast offline detection.
+
+Option A is what the committed `vercel.json` does. Option B needs the root
+`Dockerfile` and is described further down.
+
+### What option A costs you
+
+| | Option A (all Vercel) | Option B (split) |
+| --- | --- | --- |
+| Live updates | dashboard polls every 4s | WebSocket, instant |
+| Offline detection | ~90s, driven by agent polls | ~30s, background supervisor |
+| Copy latency | agent poll interval (3s default) | 1s default |
+| Hosts to manage | one | two |
+
+Neither changes how the copy engine decides anything — only how quickly it
+hears about events. The agent poll interval is the dial that matters:
+`AGENT_POLL_INTERVAL_MS`. Every poll is a function invocation on Vercel, so
+1000ms across 11 accounts is roughly 950k invocations a month and will exceed
+the free tier; 3000ms is about 320k and comfortably fits.
+
+**Serverless mode is detected automatically** from Vercel's own environment
+variables. In that mode the API skips the WebSocket server, and the heartbeat
+supervisor runs opportunistically on incoming agent polls instead of on a
+timer, because no timer survives between invocations.
+
+---
+
+## Option B: why it takes two hosts
 
 TradeOS is two runtime pieces with different needs:
 
@@ -115,15 +149,21 @@ realtime messages between them. On a single instance, leave it unset.
 
 ## 3. Dashboard (Vercel)
 
-`vercel.json` already sets the monorepo build. Import the repository in Vercel
-and set one environment variable:
+`vercel.json` already sets the monorepo build.
+
+**Option A (all-in-one):** import the repository and leave
+`NEXT_PUBLIC_API_URL` **unset**. The dashboard then calls `/api` on its own
+origin, which is where the API function is served. Set every API variable from
+section 2 on the Vercel project as well, since the API runs there.
+
+**Option B (split):** set it to the API's absolute URL:
 
 ```
 NEXT_PUBLIC_API_URL=https://your-api.onrender.com
 ```
 
-This is baked in at build time, so **changing it requires a redeploy**, not just
-an environment-variable edit.
+Either way this is baked in at build time, so **changing it requires a
+redeploy**, not just an environment-variable edit.
 
 ## 4. Wire the two together
 

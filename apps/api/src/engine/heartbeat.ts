@@ -47,6 +47,34 @@ export async function tick(now = new Date()): Promise<void> {
   await Promise.all([detectDisconnections(now), expireTasks(null, now)]);
 }
 
+/** Last sweep in this process/instance. Reset by a cold start, which is fine. */
+let lastSweepAt = 0;
+
+/**
+ * Runs the supervisor opportunistically, from inside a request.
+ *
+ * Serverless has no timer that survives between invocations, so the work that
+ * `startHeartbeatMonitor` does on an interval has to be driven by traffic
+ * instead. Agents poll constantly while anything is connected, which is
+ * exactly when this work matters — and when nothing is polling there is, by
+ * definition, nothing left to supervise.
+ *
+ * Throttled per warm instance and awaited by callers who can afford it; the
+ * queries involved are indexed and return nothing in the common case.
+ */
+export async function sweepIfDue(intervalMs = TICK_MS * 3): Promise<void> {
+  const now = Date.now();
+  if (now - lastSweepAt < intervalMs) return;
+  lastSweepAt = now;
+
+  try {
+    await tick(new Date(now));
+  } catch (err) {
+    // Never let supervision failures break the request that triggered them.
+    logger.error({ err }, 'opportunistic heartbeat sweep failed');
+  }
+}
+
 async function detectDisconnections(now: Date): Promise<void> {
   const cutoff = new Date(now.getTime() - config.AGENT_HEARTBEAT_TIMEOUT_SECONDS * 1000);
 

@@ -72,9 +72,14 @@ export async function buildApp() {
     },
   });
 
-  await app.register(websocket, {
-    options: { maxPayload: 65_536 },
-  });
+  // A WebSocket needs a process that stays alive to hold it. In serverless the
+  // dashboard falls back to polling, so registering the plugin would only add
+  // a route that can never work.
+  if (!config.isServerless) {
+    await app.register(websocket, {
+      options: { maxPayload: 65_536 },
+    });
+  }
 
   await app.register(authPlugin);
 
@@ -82,6 +87,10 @@ export async function buildApp() {
   app.get('/health', async () => ({
     status: 'ok',
     time: new Date().toISOString(),
+    // The dashboard reads this to decide between a WebSocket and polling,
+    // rather than needing a separate build-time flag that can disagree.
+    realtime: config.isServerless ? 'poll' : 'websocket',
+    pollIntervalMs: config.AGENT_POLL_INTERVAL_MS,
   }));
 
   app.get('/health/ready', async (_request, reply) => {
@@ -95,7 +104,9 @@ export async function buildApp() {
   });
 
   // --- routes ---------------------------------------------------------------
-  await app.register(realtimeRoute);
+  if (!config.isServerless) {
+    await app.register(realtimeRoute);
+  }
   await app.register(authRoutes);
   await app.register(accountRoutes);
   await app.register(copierRoutes);

@@ -25,6 +25,7 @@ import {
   watchSymbolsFor,
 } from '../../engine/copy-engine';
 import { applyCommandResults } from '../../engine/results';
+import { sweepIfDue } from '../../engine/heartbeat';
 
 /**
  * The MetaTrader-facing API.
@@ -226,6 +227,11 @@ export async function agentRoutes(app: FastifyInstance) {
 
       // --- 6. push the new state to any open dashboard ----------------------
       await pushAccountState(updated.userId);
+
+      // With no background timer in serverless, incoming polls are what drive
+      // the supervisor. Not awaited: this request's own account is already
+      // up to date, and the sweep concerns *other* accounts going quiet.
+      if (config.isServerless) void sweepIfDue();
 
       const response: AgentSyncResponse = {
         protocolVersion: AGENT_PROTOCOL_VERSION,

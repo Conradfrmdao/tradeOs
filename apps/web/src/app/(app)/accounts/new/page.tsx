@@ -18,10 +18,10 @@ function NewAccountForm() {
 
   const [form, setForm] = useState({
     name: '',
-    platform: (params.get('platform') as Platform) ?? 'MT5',
+    platform: (params?.get('platform') as Platform) ?? 'MT5',
     // Without a master there is nothing to follow, so the first account must
     // be the master regardless of what the link asked for.
-    role: (!hasMaster ? 'MASTER' : ((params.get('role') as AccountRole) ?? 'FOLLOWER')) as AccountRole,
+    role: (!hasMaster ? 'MASTER' : ((params?.get('role') as AccountRole) ?? 'FOLLOWER')) as AccountRole,
     broker: '',
     accountNumber: '',
     server: '',

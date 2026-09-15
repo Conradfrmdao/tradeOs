@@ -10,7 +10,7 @@ import { useSession } from '@/lib/session';
 
 function VerifyEmail() {
   const params = useSearchParams();
-  const token = params.get('token') ?? '';
+  const token = params?.get('token') ?? '';
   const { refresh } = useSession();
 
   const [state, setState] = useState<'working' | 'ok' | 'failed'>('working');

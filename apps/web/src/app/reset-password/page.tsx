@@ -10,7 +10,7 @@ import { ApiError, post } from '@/lib/api';
 function ResetPasswordForm() {
   const params = useSearchParams();
   const router = useRouter();
-  const token = params.get('token') ?? '';
+  const token = params?.get('token') ?? '';
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirm] = useState('');

@@ -113,8 +113,19 @@ if (isHostedPlatform && parsed.data.NODE_ENV !== 'production') {
   );
 }
 
+/**
+ * True when running as a serverless function rather than a long-lived server.
+ *
+ * Three things have to change in that mode: no WebSocket server (there is no
+ * process to hold the socket), no interval-based heartbeat supervisor (no timer
+ * survives between invocations), and staleness is swept opportunistically on
+ * incoming requests instead.
+ */
+export const isServerless = Boolean(process.env.VERCEL ?? process.env.AWS_LAMBDA_FUNCTION_NAME);
+
 export const config = {
   ...parsed.data,
+  isServerless,
   isProduction: parsed.data.NODE_ENV === 'production',
   isTest: parsed.data.NODE_ENV === 'test',
   /** Total accounts a single user may connect (PRD 38). */

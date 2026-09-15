@@ -87,7 +87,7 @@ export function LiveDataProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const connection = useRealtime(onMessage);
+  const connection = useRealtime(onMessage, reload);
 
   // The socket delivers deltas, so a reconnect may have missed some. Refetch
   // the snapshot whenever the connection is re-established.

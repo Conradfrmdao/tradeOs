@@ -1,7 +1,15 @@
 import type { ApiErrorBody } from '@tradeos/shared';
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@tradeos/shared';
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+/**
+ * Where the API lives.
+ *
+ * Unset means same-origin under /api, which is how the all-in-one Vercel
+ * deployment runs: no CORS preflights and first-party cookies. Set it to an
+ * absolute URL when the API is deployed separately, as it is with the Docker
+ * image.
+ */
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api';
 
 /**
  * Thrown for any non-2xx response. Carries the machine code and per-field

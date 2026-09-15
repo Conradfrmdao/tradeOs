@@ -41,7 +41,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useRequireAuth();
-  const pathname = usePathname();
+  // usePathname() is typed as possibly null alongside a pages/ directory.
+  const pathname = usePathname() ?? '';
   const [navOpen, setNavOpen] = useState(false);
 
   const isAdmin = user?.role === 'ADMIN';
