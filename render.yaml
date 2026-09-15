@@ -1,0 +1,75 @@
+# Render blueprint for the TradeOS API.
+#
+# Render runs this as a persistent web service, which is what the copy engine
+# needs: WebSocket connections stay open and the heartbeat supervisor keeps
+# running between requests.
+#
+# Deploy: Render dashboard > New > Blueprint > point at this repository.
+# Then set the secret values marked sync:false in the Render UI.
+
+services:
+  - type: web
+    name: tradeos-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    # Migrations run once per deploy rather than on every container start, so
+    # scaling to more than one instance cannot race them.
+    preDeployCommand: npx prisma migrate deploy --schema packages/db/schema.prisma
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: "4000"
+
+      # --- set these in the Render dashboard ---
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false # must be exactly 32 bytes, base64 — see docs/DEPLOYMENT.md
+      - key: ENCRYPTION_KEY_VERSION
+        value: "1"
+
+      # Public origins. Update WEB_ORIGIN to your Vercel URL and
+      # API_PUBLIC_URL to this service's own URL once both exist.
+      - key: WEB_ORIGIN
+        sync: false
+      - key: API_PUBLIC_URL
+        sync: false
+
+      # SMTP. Without these, verification and alert emails are logged as
+      # failures but nothing else breaks.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+
+      - key: MAX_FOLLOWER_ACCOUNTS
+        value: "10"
+      - key: MAX_MASTER_ACCOUNTS
+        value: "1"
+      - key: AGENT_HEARTBEAT_TIMEOUT_SECONDS
+        value: "30"
+      - key: AGENT_POLL_INTERVAL_MS
+        value: "1000"
+      - key: COPY_MAX_ATTEMPTS
+        value: "3"
+      - key: COPY_TASK_TTL_SECONDS
+        value: "60"

@@ -15,6 +15,13 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+
+  // Pooled providers (Neon, Supabase, pgBouncer) multiplex connections, which
+  // breaks the session-level locks and prepared statements migrations rely on.
+  // Migrations therefore run over a direct connection while the application
+  // keeps using the pool. Falls back to DATABASE_URL when unset, so a plain
+  // local Postgres needs no extra configuration.
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // ===========================================================================

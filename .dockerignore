@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/generated
+.git
+.env
+.env.*
+!.env.example
+docs
+connector
+*.md
+.vercel

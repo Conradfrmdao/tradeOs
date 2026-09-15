@@ -1,0 +1,170 @@
+# Deploying TradeOS
+
+Written for: whoever puts this on the internet.
+
+## Why it takes two hosts
+
+TradeOS is two runtime pieces with different needs:
+
+| Piece | Needs | Goes on |
+| --- | --- | --- |
+| `apps/web` — the dashboard | Static + server rendering | **Vercel** |
+| `apps/api` — API and copy engine | A process that never stops | **Render / Railway / Fly / any Docker host** |
+
+The API cannot run on Vercel, and the reason is structural rather than a
+configuration detail. It holds the dashboard's WebSocket connections open, and
+it runs a supervisor that notices within 30 seconds when a MetaTrader terminal
+stops reporting. Serverless functions are request-scoped: they have no
+long-lived socket and no timer that survives between requests. Putting the API
+there would mean replacing live updates with polling and slowing
+disconnect detection to whatever the platform's cron granularity allows —
+on a product whose job is to notice a dead terminal, that is the wrong trade.
+
+```
+        Vercel                     Render / Railway / Fly
+   ┌──────────────┐  REST + WS  ┌────────────────────────┐
+   │ Next.js      │────────────▶│ Fastify API            │
+   │ dashboard    │             │ copy engine            │
+   └──────────────┘             │ heartbeat supervisor   │
+                                └───────────┬────────────┘
+                                            │
+   MetaTrader agents ───────────────────────┤
+   (HTTPS, 1s poll)                         ▼
+                                     Neon Postgres
+```
+
+---
+
+## 1. Database
+
+Any Postgres 14+. Neon and Supabase both work on their free tiers.
+
+Two variables, because pooled connections break migrations:
+
+```
+DATABASE_URL=postgresql://…-pooler.…/neondb?sslmode=require
+DIRECT_DATABASE_URL=postgresql://….…/neondb?sslmode=require
+```
+
+`DIRECT_DATABASE_URL` is the same host **without** `-pooler`. The application
+uses the pool; `prisma migrate` uses the direct connection, because a pooler
+multiplexes sessions and that breaks the locks migrations depend on.
+
+Apply the schema:
+
+```bash
+DATABASE_URL=… DIRECT_DATABASE_URL=… \
+  npx prisma migrate deploy --schema packages/db/schema.prisma
+```
+
+## 2. API
+
+### Render (blueprint included)
+
+`render.yaml` is in the repo. In Render: **New → Blueprint**, point it at this
+repository, and fill in the values marked `sync: false`. `SESSION_SECRET` is
+generated for you; the rest are below.
+
+### Railway / Fly / any Docker host
+
+Build `apps/api/Dockerfile` with the **repository root** as build context:
+
+```bash
+docker build -f apps/api/Dockerfile -t tradeos-api .
+```
+
+Railway detects the Dockerfile automatically. Set the start command to
+`node apps/api/dist/server.js` and run migrations as a pre-deploy step.
+
+### Required environment
+
+```bash
+NODE_ENV=production
+DATABASE_URL=…
+DIRECT_DATABASE_URL=…
+
+# 32+ bytes:  node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+SESSION_SECRET=…
+# EXACTLY 32 bytes, base64:  node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+ENCRYPTION_KEY=…
+ENCRYPTION_KEY_VERSION=1
+
+WEB_ORIGIN=https://your-app.vercel.app     # exact origin, no trailing slash
+API_PUBLIC_URL=https://your-api.onrender.com
+
+SMTP_HOST=…                                 # see "Email" below
+SMTP_PORT=587
+SMTP_USER=…
+SMTP_PASS=…
+MAIL_FROM="TradeOS <no-reply@yourdomain.com>"
+```
+
+The process refuses to start if `SESSION_SECRET` or `ENCRYPTION_KEY` is missing
+or malformed. That is deliberate — a half-configured trading system should not
+boot.
+
+`WEB_ORIGIN` must be the exact origin of your Vercel deployment. It drives both
+CORS and the links in outgoing emails; a mismatch shows up as every browser
+request failing CORS while `curl` works fine.
+
+### Optional
+
+`REDIS_URL` is only needed to run more than one API instance — it carries
+realtime messages between them. On a single instance, leave it unset.
+
+## 3. Dashboard (Vercel)
+
+`vercel.json` already sets the monorepo build. Import the repository in Vercel
+and set one environment variable:
+
+```
+NEXT_PUBLIC_API_URL=https://your-api.onrender.com
+```
+
+This is baked in at build time, so **changing it requires a redeploy**, not just
+an environment-variable edit.
+
+## 4. Wire the two together
+
+1. Deploy the API. Note its URL.
+2. Set `NEXT_PUBLIC_API_URL` on Vercel to that URL. Deploy the dashboard.
+3. Set `WEB_ORIGIN` on the API to the Vercel URL. Redeploy the API.
+4. Open the dashboard, sign up, and confirm the account appears.
+
+Step 3 is the one people skip; without it every browser request fails CORS.
+
+## 5. Point the agents at it
+
+In each MetaTrader terminal, the EA's `ApiUrl` input and the WebRequest
+allow-list entry (**Tools → Options → Expert Advisors**) must both be the API
+URL — `https://your-api.onrender.com`, not the Vercel URL.
+
+---
+
+## Email
+
+Verification and alert emails need real SMTP in production. Anything works:
+Resend, Postmark, SES, Mailgun, a Gmail app password for low volume.
+
+Without SMTP configured, send failures are logged and everything else keeps
+working — but users cannot verify their email, and connecting a trading account
+requires a verified address. In-dashboard notifications still appear.
+
+## Before real money
+
+- **Use a paid tier for the API.** Free tiers on Render and similar sleep after
+  inactivity. A sleeping API means agents cannot report and trades are not
+  copied. This single setting matters more than anything else here.
+- Rotate any credential that has been pasted into a chat, a ticket, or a shared
+  document.
+- Turn on database backups.
+- Work through `docs/TESTING.md` on demo accounts first.
+
+## Known rough edges
+
+- The API image is ~1.1 GB because the runtime installs every workspace's
+  production dependencies, including the dashboard's. It works; trimming it to
+  the API's own dependencies would cut it substantially.
+- `prisma migrate deploy` runs as a pre-deploy step in `render.yaml`. On a host
+  without that concept, run it manually after each deploy rather than on
+  container start, so scaling past one instance cannot race it.
