@@ -1,5 +1,3 @@
-// Thin re-export so application code imports `@tradeos/db` and never reaches
-// into the generated client directory directly.
-const client = require('./generated/client');
-
-module.exports = client;
+// Thin re-export so application code imports `@tradeos/db` and never depends
+// on where Prisma happens to generate its client.
+module.exports = require('@prisma/client');

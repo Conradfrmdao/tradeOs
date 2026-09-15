@@ -21,7 +21,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
-packages/db/generated/
 *.log
 
 # Local scratch files

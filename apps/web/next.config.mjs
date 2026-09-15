@@ -16,18 +16,10 @@ const nextConfig = {
   // the repository root or their files are left out of the function bundle.
   outputFileTracingRoot: repoRoot,
 
-  // Prisma's query engine is a native binary. The bundler cannot see it
-  // through a require, so it is named explicitly — without this the deployed
-  // function starts fine and then fails on the first query.
-  outputFileTracingIncludes: {
-    '/api/[...path]': [
-      '../../packages/db/generated/**/*',
-      '../../packages/db/schema.prisma',
-    ],
-  },
-
   // Keep Prisma out of the bundle and load it at runtime, which is what makes
   // the traced engine file resolvable.
+  // Load Prisma at runtime rather than bundling it, so its native query
+  // engine resolves from node_modules the way Vercel expects.
   serverExternalPackages: ['@prisma/client', '@tradeos/db'],
 };
 

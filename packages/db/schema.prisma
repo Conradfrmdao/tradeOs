@@ -9,11 +9,14 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "./generated/client"
 
+  // Deliberately the default output (node_modules/.prisma/client). A custom
+  // output directory needs bundler hints that do not resolve reliably from a
+  // workspace package, and the failure mode is nasty: the deployment builds
+  // and serves pages, then fails every database call at runtime.
+  //
   // "native" covers whatever machine runs `prisma generate`; the explicit
-  // target is the runtime Vercel's functions use. Without it, a build on any
-  // non-Linux machine ships a client with no engine the deployment can load.
+  // target is the runtime Vercel's functions use.
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
