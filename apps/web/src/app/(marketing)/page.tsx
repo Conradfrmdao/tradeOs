@@ -43,7 +43,7 @@ function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="text-lg font-semibold tracking-tight text-slate-900">
-          TradeOS
+          Trade<span className="text-slate-400">OS</span>
         </Link>
         <nav className="flex items-center gap-1 sm:gap-3">
           <a
@@ -96,7 +96,7 @@ function Hero() {
 
       <CandlesBackdrop />
 
-      <div className="relative mx-auto max-w-6xl px-6 py-20 sm:py-28">
+      <div className="relative mx-auto max-w-6xl px-6 py-24 sm:py-32">
         <div className="max-w-2xl">
           <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-6xl">
             One account trades.
@@ -113,9 +113,24 @@ function Hero() {
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link
               href="/sign-up"
-              className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+              className="group inline-flex items-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800"
             >
               Create an account
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+                className="transition-transform group-hover:translate-x-0.5"
+              >
+                <path d="M5 12h14" />
+                <path d="m13 6 6 6-6 6" />
+              </svg>
             </Link>
             <a
               href="#how"
