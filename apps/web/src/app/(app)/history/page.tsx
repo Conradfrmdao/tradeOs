@@ -10,7 +10,7 @@ import {
   EmptyState,
   Money,
   PageHeader,
-  Spinner,
+  SkeletonTable,
   TableWrap,
   cx,
   inputClass,
@@ -128,7 +128,7 @@ export default function HistoryPage() {
       </Card>
 
       {loading && !data ? (
-        <Spinner label="Loading history" />
+        <SkeletonTable columns={10} rows={8} />
       ) : !data || data.items.length === 0 ? (
         <EmptyState
           title="No closed trades yet"

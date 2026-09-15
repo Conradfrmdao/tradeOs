@@ -11,7 +11,11 @@ import {
   EmptyState,
   Field,
   PageHeader,
-  Spinner,
+  SkeletonScreen,
+  SkeletonHeader,
+  SkeletonStatRow,
+  SkeletonCard,
+  SkeletonList,
   Toggle,
   cx,
   inputClass,
@@ -90,7 +94,21 @@ export default function CopierPage() {
     }
   }
 
-  if (loading) return <Spinner label="Loading copier settings" />;
+  if (loading) {
+    return (
+      <SkeletonScreen label="Loading copier settings">
+        <SkeletonHeader />
+        <SkeletonStatRow count={3} />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-2">
+            <SkeletonCard rows={2} />
+            <SkeletonCard rows={2} />
+          </div>
+          <SkeletonList rows={6} />
+        </div>
+      </SkeletonScreen>
+    );
+  }
 
   const master = accounts.find((a) => a.role === 'MASTER');
 

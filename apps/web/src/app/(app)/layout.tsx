@@ -83,14 +83,16 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       <nav
         className={cx(
-          'border-b border-slate-200 bg-white px-3 py-4 lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r',
-          navOpen ? 'block' : 'hidden lg:block',
+          'border-b border-slate-200 bg-white px-3 py-4 lg:flex lg:h-screen lg:w-60 lg:shrink-0',
+          'lg:sticky lg:top-0 lg:flex-col lg:border-b-0 lg:border-r',
+          navOpen ? 'block' : 'hidden lg:flex',
         )}
       >
         <Link href="/dashboard" className="mb-6 hidden px-3 text-lg font-bold lg:block">
           TradeOS
         </Link>
 
+        <div className="min-h-0 flex-1 lg:overflow-y-auto">
         <ul className="space-y-1">
           {NAV.map((item) => (
             <NavLink key={item.href} {...item} pathname={pathname} onNavigate={() => setNavOpen(false)} />
@@ -109,14 +111,28 @@ function Shell({ children }: { children: React.ReactNode }) {
             </ul>
           </>
         ) : null}
+        </div>
 
-        <div className="mt-8 flex items-center gap-3 border-t border-slate-200 px-3 pt-4">
-          {/* Clerk owns the profile and sign-out menu. */}
-          <UserButton />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-slate-900">{user?.name}</p>
-            <p className="truncate text-xs text-slate-500">{user?.email}</p>
-          </div>
+        {/* Pinned to the bottom of the sidebar. `showName` puts the name and
+            email inside Clerk's own trigger, so the whole row opens the menu
+            rather than only the avatar. */}
+        <div className="mt-6 border-t border-slate-200 pt-3 lg:mt-0">
+          <UserButton
+            showName
+            appearance={{
+              elements: {
+                rootBox: 'w-full',
+                userButtonBox:
+                  'w-full flex-row-reverse justify-end gap-3 rounded-lg px-2 py-2 ' +
+                  'hover:bg-slate-100 transition-colors cursor-pointer',
+                userButtonTrigger:
+                  'w-full focus:shadow-none focus-visible:ring-2 focus-visible:ring-slate-900 rounded-lg',
+                userButtonOuterIdentifier:
+                  'text-sm font-medium text-slate-900 truncate max-w-[9rem]',
+                avatarBox: 'h-8 w-8',
+              },
+            }}
+          />
         </div>
       </nav>
 
@@ -167,7 +183,7 @@ function NavLink({
  * unverified email blocking account setup.
  */
 function TopBanners() {
-  const { connection, portfolio, accounts } = useLiveData();
+  const { staleWarning, portfolio, accounts } = useLiveData();
   const { user, refresh } = useRequireAuth();
   const [resent, setResent] = useState(false);
 
@@ -177,7 +193,7 @@ function TopBanners() {
 
   return (
     <div className="mb-4 space-y-3 empty:mb-0">
-      {connection !== 'open' ? (
+      {staleWarning ? (
         <Alert tone="warning" title="Live updates are offline">
           The figures below may be out of date. Reconnecting automatically…
         </Alert>

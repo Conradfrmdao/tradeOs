@@ -10,7 +10,10 @@ import {
   EmptyState,
   Money,
   PageHeader,
-  Spinner,
+  SkeletonScreen,
+  SkeletonHeader,
+  SkeletonCard,
+  SkeletonTable,
   StatusBadge,
   TableWrap,
   tdClass,
@@ -21,7 +24,20 @@ export default function AccountsPage() {
   const { accounts, portfolio, loading, reload } = useLiveData();
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  if (loading) return <Spinner label="Loading accounts" />;
+  if (loading) {
+    return (
+      <SkeletonScreen label="Loading accounts">
+        <SkeletonHeader />
+        <div className="space-y-3 sm:hidden">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        <div className="hidden sm:block">
+          <SkeletonTable columns={9} rows={5} />
+        </div>
+      </SkeletonScreen>
+    );
+  }
 
   const atLimit = (portfolio?.totalAccounts ?? 0) >= (portfolio?.maxAccounts ?? 11);
 

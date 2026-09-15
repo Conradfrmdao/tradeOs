@@ -11,7 +11,9 @@ import {
   EmptyState,
   Money,
   PageHeader,
-  Spinner,
+  SkeletonScreen,
+  SkeletonHeader,
+  SkeletonTable,
   TableWrap,
   cx,
   inputClass,
@@ -58,7 +60,14 @@ export default function OpenTradesPage() {
     void load();
   }, [portfolio?.openPositions, load]);
 
-  if (loading && !data) return <Spinner label="Loading open trades" />;
+  if (loading && !data) {
+    return (
+      <SkeletonScreen label="Loading open trades">
+        <SkeletonHeader />
+        <SkeletonTable columns={10} rows={6} />
+      </SkeletonScreen>
+    );
+  }
 
   return (
     <>

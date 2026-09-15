@@ -10,7 +10,12 @@ import {
   EmptyState,
   Money,
   PageHeader,
-  Spinner,
+  SkeletonScreen,
+  SkeletonHeader,
+  SkeletonStatRow,
+  SkeletonCard,
+  SkeletonList,
+  SkeletonChart,
   Stat,
   StatusBadge,
   cx,
@@ -21,7 +26,25 @@ import { CopyEventFeed } from '@/components/copy-event-feed';
 export default function DashboardPage() {
   const { portfolio, accounts, events, loading } = useLiveData();
 
-  if (loading) return <Spinner label="Loading your portfolio" />;
+  if (loading) {
+    return (
+      <SkeletonScreen label="Loading your portfolio">
+        <SkeletonHeader />
+        <SkeletonStatRow />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <SkeletonCard />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+            <SkeletonChart />
+          </div>
+          <SkeletonList rows={8} />
+        </div>
+      </SkeletonScreen>
+    );
+  }
 
   const master = accounts.find((a) => a.role === 'MASTER');
   const followers = accounts.filter((a) => a.role === 'FOLLOWER');

@@ -13,7 +13,12 @@ import {
   EmptyState,
   Money,
   PageHeader,
-  Spinner,
+  SkeletonScreen,
+  SkeletonHeader,
+  SkeletonStatRow,
+  SkeletonCard,
+  SkeletonChart,
+  SkeletonTable,
   Stat,
   StatusBadge,
   TableWrap,
@@ -75,7 +80,19 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
     if (live.openPositions !== data.positions.length) void load();
   }, [live?.openPositions, live, data, load]);
 
-  if (loading) return <Spinner label="Loading account" />;
+  if (loading) {
+    return (
+      <SkeletonScreen label="Loading account">
+        <SkeletonHeader />
+        <SkeletonStatRow count={8} />
+        <SkeletonTable columns={8} rows={4} />
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <SkeletonChart />
+          <SkeletonCard rows={8} />
+        </div>
+      </SkeletonScreen>
+    );
+  }
   if (error || !account) return <Alert tone="error">{error ?? 'Account not found.'}</Alert>;
 
   const floating = data?.positions.reduce((sum, p) => sum + p.profit, 0) ?? 0;

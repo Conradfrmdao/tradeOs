@@ -273,6 +273,154 @@ export function EmptyState({
   );
 }
 
+/**
+ * Loading placeholders.
+ *
+ * Preferred over a spinner because they hold the shape of what is coming: the
+ * page does not jump when data lands, and a trader glancing at the screen can
+ * already see where the balance and the positions will be. `aria-hidden` keeps
+ * the decoration out of the accessibility tree; the surrounding region carries
+ * the live status instead.
+ */
+export function Skeleton({ className }: { className?: string }) {
+  return <div aria-hidden className={cx('animate-pulse rounded bg-slate-200/70', className)} />;
+}
+
+/** Wraps a skeleton screen so assistive tech announces loading once. */
+export function SkeletonScreen({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div role="status" aria-busy="true" aria-label={label}>
+      <span className="sr-only">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+export function SkeletonStatRow({ count = 6 }: { count?: number }) {
+  return (
+    <Card className="mb-6">
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i}>
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="mt-2 h-7 w-28" />
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+export function SkeletonCard({ rows = 4 }: { rows?: number }) {
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3">
+        <div className="w-full">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="mt-2 h-5 w-40" />
+          <Skeleton className="mt-2 h-3 w-52" />
+        </div>
+        <Skeleton className="h-5 w-16 rounded-full" />
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i}>
+            <Skeleton className="h-3 w-14" />
+            <Skeleton className="mt-1.5 h-5 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-3 w-28" />
+      </div>
+    </Card>
+  );
+}
+
+export function SkeletonTable({
+  columns = 6,
+  rows = 6,
+}: {
+  columns?: number;
+  rows?: number;
+}) {
+  return (
+    <TableWrap>
+      <table className="w-full">
+        <thead className="border-b border-slate-200 bg-slate-50">
+          <tr>
+            {Array.from({ length: columns }).map((_, i) => (
+              <th key={i} className={thClass}>
+                <Skeleton className="h-3 w-16" />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {Array.from({ length: rows }).map((_, r) => (
+            <tr key={r}>
+              {Array.from({ length: columns }).map((_, c) => (
+                <td key={c} className={tdClass}>
+                  {/* Vary the width so it reads as content, not a grid. */}
+                  <Skeleton className={cx('h-4', c === 0 ? 'w-36' : c % 3 === 0 ? 'w-16' : 'w-20')} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableWrap>
+  );
+}
+
+export function SkeletonList({ rows = 6 }: { rows?: number }) {
+  return (
+    <Card className="p-0">
+      <ol className="divide-y divide-slate-100">
+        {Array.from({ length: rows }).map((_, i) => (
+          <li key={i} className="flex gap-3 px-4 py-3">
+            <Skeleton className="mt-1.5 h-2 w-2 shrink-0 rounded-full" />
+            <div className="flex-1">
+              <Skeleton className="h-4 w-full max-w-[16rem]" />
+              <Skeleton className="mt-2 h-3 w-24" />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </Card>
+  );
+}
+
+export function SkeletonChart() {
+  return (
+    <Card>
+      <div className="flex gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-16 rounded-lg" />
+        ))}
+      </div>
+      <Skeleton className="mt-5 h-7 w-40" />
+      <Skeleton className="mt-4 h-56 w-full rounded-lg" />
+    </Card>
+  );
+}
+
+export function SkeletonHeader() {
+  return (
+    <div className="mb-6">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="mt-2 h-4 w-72" />
+    </div>
+  );
+}
+
 export function Spinner({ label = 'Loading' }: { label?: string }) {
   return (
     <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">

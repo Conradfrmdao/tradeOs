@@ -20,6 +20,8 @@ interface LiveData {
   notifications: NotificationDto[];
   unreadCount: number;
   connection: ConnectionState;
+  /** True only when live updates are genuinely down, not merely starting. */
+  staleWarning: boolean;
   loading: boolean;
   reload: () => Promise<void>;
   markNotificationsRead: () => Promise<void>;
@@ -97,6 +99,26 @@ export function LiveDataProvider({ children }: { children: React.ReactNode }) {
     if (connection === 'open') setWasOpen(true);
   }, [connection, wasOpen, reload]);
 
+  // Whether to tell the user live updates are down.
+  //
+  // Every page load starts disconnected for the moment it takes to reach the
+  // server, and flashing "offline" during that is alarming and untrue. The
+  // warning is therefore only raised once a connection that *had* been working
+  // drops, or when the very first attempt is clearly taking too long.
+  const [staleWarning, setStaleWarning] = useState(false);
+  useEffect(() => {
+    if (connection === 'open') {
+      setStaleWarning(false);
+      return;
+    }
+    if (wasOpen) {
+      setStaleWarning(true);
+      return;
+    }
+    const id = setTimeout(() => setStaleWarning(true), 8000);
+    return () => clearTimeout(id);
+  }, [connection, wasOpen]);
+
   const markNotificationsRead = useCallback(async () => {
     setUnreadCount(0);
     setNotifications((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })));
@@ -111,11 +133,12 @@ export function LiveDataProvider({ children }: { children: React.ReactNode }) {
       notifications,
       unreadCount,
       connection,
+      staleWarning,
       loading,
       reload,
       markNotificationsRead,
     }),
-    [accounts, portfolio, events, notifications, unreadCount, connection, loading, reload, markNotificationsRead],
+    [accounts, portfolio, events, notifications, unreadCount, connection, staleWarning, loading, reload, markNotificationsRead],
   );
 
   return <LiveDataContext.Provider value={value}>{children}</LiveDataContext.Provider>;

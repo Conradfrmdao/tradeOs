@@ -10,7 +10,12 @@ import {
   EmptyState,
   Money,
   PageHeader,
-  Spinner,
+  SkeletonScreen,
+  SkeletonHeader,
+  SkeletonStatRow,
+  SkeletonCard,
+  SkeletonChart,
+  SkeletonTable,
   Stat,
   TableWrap,
   tdClass,
@@ -61,7 +66,21 @@ export default function AnalyticsPage() {
     })();
   }, []);
 
-  if (loading) return <Spinner label="Crunching your numbers" />;
+  if (loading) {
+    return (
+      <SkeletonScreen label="Loading analytics">
+        <SkeletonHeader />
+        <SkeletonStatRow />
+        <div className="mb-6 grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <SkeletonChart />
+          </div>
+          <SkeletonCard rows={6} />
+        </div>
+        <SkeletonTable columns={9} rows={4} />
+      </SkeletonScreen>
+    );
+  }
   if (!data) return <EmptyState title="No analytics available yet" />;
 
   const { stats } = data;
