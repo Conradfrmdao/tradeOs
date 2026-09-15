@@ -67,10 +67,11 @@ generated for you; the rest are below.
 
 ### Railway / Fly / any Docker host
 
-Build `apps/api/Dockerfile` with the **repository root** as build context:
+Build the root `Dockerfile` (the build context is the whole repository, because
+the image needs the shared packages and the Prisma schema):
 
 ```bash
-docker build -f apps/api/Dockerfile -t tradeos-api .
+docker build -t tradeos-api .
 ```
 
 Railway detects the Dockerfile automatically. Set the start command to

@@ -51,6 +51,10 @@ goes quiet. Serverless cannot do either. Full detail in
 Uses the committed `render.yaml`. Fill in `DATABASE_URL`, `DIRECT_DATABASE_URL`
 and `ENCRYPTION_KEY` when prompted. Note the URL it gives you.
 
+On Railway, deploy from the GitHub repo and confirm the builder is **Dockerfile**
+(Settings → Build). Its Node auto-detection cannot build a monorepo and will
+fail looking for a start command.
+
 **2. Dashboard** — [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Conradfrmdao/tradeOs&env=NEXT_PUBLIC_API_URL&envDescription=URL%20of%20your%20deployed%20TradeOS%20API)
 
 Set `NEXT_PUBLIC_API_URL` to the API URL from step 1.

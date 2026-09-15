@@ -11,7 +11,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build -w @tradeos/shared && npm run build -w @tradeos/api && npm run build -w @tradeos/web",
+    "build": "npm run db:generate && npm run build -w @tradeos/shared && npm run build -w @tradeos/api && npm run build -w @tradeos/web",
     "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "npm run dev -w @tradeos/api",
     "dev:web": "npm run dev -w @tradeos/web",
@@ -24,7 +24,8 @@
     "infra:down": "docker compose down",
     "typecheck": "npm run typecheck -w @tradeos/shared && npm run typecheck -w @tradeos/api && npm run typecheck -w @tradeos/web",
     "test": "npm run test -w @tradeos/api",
-    "admin": "tsx --env-file=.env apps/api/src/scripts/admin.ts"
+    "admin": "tsx --env-file=.env apps/api/src/scripts/admin.ts",
+    "start": "node apps/api/dist/server.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

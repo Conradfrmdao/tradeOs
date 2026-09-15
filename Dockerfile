@@ -1,6 +1,14 @@
 # ---------------------------------------------------------------------------
 # TradeOS API
 #
+# This lives at the repository root, not next to the API source, because that
+# is where every platform's Dockerfile auto-detection looks. Railway in
+# particular falls back to its own Node builder when it cannot find one here,
+# and then fails because a monorepo has no single start command.
+#
+# The build context is the whole repository either way: the image needs the
+# shared packages and the Prisma schema, not just apps/api.
+#
 # Runs as a long-lived process, which is the whole reason it is not on a
 # serverless platform: it holds the dashboard's WebSocket connections and runs
 # the heartbeat supervisor that marks an account offline within seconds.
